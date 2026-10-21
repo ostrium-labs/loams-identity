@@ -1,0 +1,11 @@
+# Markdown lint configuration (markdownlint-cli2).
+config:
+  default: true
+  MD013: false        # line length: prose is wrapped by hand, tables are long
+  MD024:
+    siblings_only: true
+  MD033: false        # inline HTML is allowed where needed
+  MD041: true
+  MD060: false        # table column alignment style
+ignores:
+  - ".github/**"

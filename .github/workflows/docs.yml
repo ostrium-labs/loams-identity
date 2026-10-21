@@ -1,0 +1,47 @@
+name: Docs
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  lint:
+    name: Markdown lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Required files are present
+        run: |
+          for f in README.md LICENSE CONTRIBUTING.md PROVENANCE.md SECURITY.md \
+                   docs/threat-model.md docs/milestones.md docs/adr/README.md spec/00-index.md; do
+            test -s "$f" || { echo "::error file=$f::missing or empty"; exit 1; }
+          done
+      - uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        with:
+          globs: '**/*.md'
+
+  links:
+    name: Link check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Markdown link check
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: >-
+            --no-progress
+            --include-fragments
+            --max-retries 3
+            --accept 200,206,429
+            './**/*.md'
+          fail: true

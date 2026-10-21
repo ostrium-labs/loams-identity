@@ -1,0 +1,2 @@
+# Hosts that block automated link checkers.
+^https://www\.w3\.org/TR/2026/
