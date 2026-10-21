@@ -1,6 +1,6 @@
 # ADR 0010: Own provider-side protocol types; `openidconnect` and `oauth2` only for federation
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

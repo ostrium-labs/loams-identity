@@ -90,12 +90,12 @@ require `Authorization: DPoP` plus a proof with `ath` for bound tokens.
 makes proofs mandatory for that client. Metadata gains `dpop_signing_alg_values_supported`.
 Token families record `jkt` so rotation keeps the binding.
 
-## 4. Client ID Metadata Documents `[P3, recommended]`
+## 4. Client ID Metadata Documents `[P3]`
 
 MCP clients are expected to identify themselves with a URL whose document describes them,
 instead of registering in advance ([MCP authorization], which says authorization servers SHOULD
-support this and marks dynamic registration as deprecated). Recommended for Phase 3 because agent
-and MCP clients are central to Loams.
+support this and marks dynamic registration as deprecated). Part of Phase 3 (owner decision,
+2026-10-21), because agent and MCP clients are central to Loams.
 
 **LATER-11.** Off by default. The instance setting `client_id_metadata_documents` is `off`,
 `allowlist` (with host patterns) or `open`, and names the org and project in which such clients
@@ -172,8 +172,8 @@ servers may use it for sensitive operations.
 ## 8. SCIM 2.0 `[later, on customer request]`
 
 **LATER-21.** When scheduled: an inbound SCIM service provider ([RFC 7644]) at
-`/scim/v2/orgs/{org_id}/Users` (and `/Groups` only if the owner decides that groups live in this
-service, [14](14-orgs-projects-roles.md) section 10), authenticated with a machine user's token
+`/scim/v2/orgs/{org_id}/Users` (no `/Groups`: teams are owned by Loams' control plane,
+[14](14-orgs-projects-roles.md) ORG-28a), authenticated with a machine user's token
 whose audience is `<issuer>/scim` and which holds `user.manage` on the org. Users map to the
 `User` aggregate with the core schema ([RFC 7643]): `userName` to login name, `name`, `emails`,
 `active` to deactivate and reactivate, `externalId` stored as an external id. `DELETE` maps to

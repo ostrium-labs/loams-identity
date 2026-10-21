@@ -48,14 +48,12 @@ plan names and variants, and pass, warning, failure and skip counts per test.
 Implicit, hybrid, Session Management and Front-Channel Logout plans do not apply (SEC-1,
 ADR 0025).
 
-**VER-6. Known conflict: PKCE and the Basic OP plan.** Other implementers report that the Basic
-OP plan sends authorization requests without a PKCE `code_challenge`, and that a server that
-requires PKCE for every client fails every test in that plan at the authorization endpoint.
-This spec requires PKCE for every client (SEC-3). Per SEC-0, the implementer MUST NOT relax it.
-Until the owner decides (see the open questions in `docs/milestones.md`), the Basic and Form
-Post plans are run and their failures recorded in `RESULTS.md` with the reason "PKCE required
-by SEC-3". The fact must be verified against the pinned suite version at milestone M1.15; if the
-suite offers a PKCE option by then, use it and close the conflict.
+**VER-6. PKCE and the Basic OP plan.** Other implementers report that the Basic OP plan sends
+authorization requests without a PKCE `code_challenge`. The owner decided (2026-10-21) to allow an
+opt-in exception for confidential OIDC clients that always send `nonce` ([07](07-oauth-core.md)
+OAUTH-14a). The conformance clients use it, and `RESULTS.md` says so next to SEC-3. No other
+client gets it by default. Verify the suite's behaviour against the pinned version at milestone
+M1.18; if the suite sends PKCE by then, register the conformance clients without the exception.
 
 **VER-7.** Expected warnings are recorded with their reason. A warning or failure that follows
 from a conservative choice in `spec/` is listed in `RESULTS.md` next to the requirement id that

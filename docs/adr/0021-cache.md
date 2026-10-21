@@ -1,6 +1,6 @@
 # ADR 0021: foyer directly for the cache; not Loams' `loams-cache`
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

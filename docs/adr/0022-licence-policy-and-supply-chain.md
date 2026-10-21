@@ -1,6 +1,6 @@
 # ADR 0022: Licence allowlist, exceptions, and the C-dependency register
 
-- Status: Proposed (two licence exceptions need the owner's approval)
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context
@@ -21,10 +21,10 @@ Some crates that are hard to avoid use other permissive licences (checked on cra
 
 - `deny.toml` allows: `Apache-2.0`, `Apache-2.0 WITH LLVM-exception`, `MIT`, `MIT-0`,
   `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `MPL-2.0`.
-- **Proposed exceptions, scoped to named crates only:** `Unicode-3.0` (ICU4X crates),
-  `CDLA-Permissive-2.0` (`webpki-roots`, `webpki-root-certs`), `Zlib` (`foldhash`). These are
-  permissive data or code licences without copyleft. They need the owner's approval because they
-  are outside the stated list.
+- **Exceptions, scoped to named crates only (approved by the owner, 2026-10-21):** `Unicode-3.0`
+  (ICU4X crates), `CDLA-Permissive-2.0` (`webpki-roots`, `webpki-root-certs`), `Zlib`
+  (`foldhash`). These are permissive data or code licences without copyleft. In `deny.toml` they
+  are `[[licenses.exceptions]]` entries naming each crate, not global allows.
 - Denied always: GPL, AGPL, LGPL, SSPL, BUSL, any licence with field-of-use limits, and
   unlicensed crates.
 - `cargo-deny` also checks advisories (RustSec), bans duplicate major versions with an exception
@@ -34,7 +34,7 @@ Some crates that are hard to avoid use other permissive licences (checked on cra
 - **C-dependency register** (`docs/c-dependencies.md`, created in Phase 1 with the first
   `Cargo.lock`): every crate that compiles C or assembly, why we accept it, and how to replace it.
   Expected entries: `aws-lc-sys` (RSA signing, rustls provider), `openssl-sys` (through
-  `webauthn-rs`, Phase 2, pending the owner's decision in ADR 0007), `ring` if any dependency
+  `webauthn-rs`, Phase 2, accepted in ADR 0007), `ring` if any dependency
   pulls it. SAML's libxml2 and xmlsec1 are not accepted (ADR 0011).
 
 ## Alternatives considered
@@ -49,9 +49,10 @@ Some crates that are hard to avoid use other permissive licences (checked on cra
 Each new licence or C dependency needs a line in this ADR or the register, reviewed in the pull
 request that adds it.
 
-## Owner question
+## Owner decision (2026-10-21)
 
-Approve the three scoped exceptions (Unicode-3.0, CDLA-Permissive-2.0, Zlib)?
+The three scoped exceptions are approved, each limited to the named crates. A new crate under one
+of these licences needs its own exception entry and a line here.
 
 ## Derived from
 

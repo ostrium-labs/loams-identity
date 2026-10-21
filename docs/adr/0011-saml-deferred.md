@@ -1,6 +1,6 @@
 # ADR 0011: SAML deferred; `samael` C dependencies flagged
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context
@@ -30,6 +30,11 @@ right and historically a source of signature-wrapping vulnerabilities.
 
 - **Build SAML now.** Not in scope; the C stack and the attack surface are not justified without
   a customer.
+
+## Owner decision (2026-10-21)
+
+SAML stays deferred. The direction (`samael` with its C stack, our own implementation, or a
+broker in front) is decided when a customer asks.
 
 ## Consequences
 

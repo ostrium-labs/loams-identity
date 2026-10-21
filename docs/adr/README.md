@@ -1,10 +1,10 @@
 # Architecture decision records
 
 Each ADR records one non-obvious decision, the alternatives considered, and what it was derived
-from (for `PROVENANCE.md`). Status values: Proposed (Phase A, awaiting the owner's review),
-Accepted, Superseded.
+from (for `PROVENANCE.md`). Status values: Proposed, Accepted, Superseded.
 
-All ADRs below are **Proposed** until the Phase A review gate.
+The owner accepted every ADR below at the Phase A review gate on 2026-10-21, with the
+decisions recorded in [../milestones.md](../milestones.md) and in ADRs 0007, 0011 and 0022.
 
 | ADR | Decision |
 |---|---|

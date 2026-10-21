@@ -1,6 +1,6 @@
 # ADR 0024: In-process rate limits and store-backed lockout with timed locks
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

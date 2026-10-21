@@ -1,6 +1,6 @@
 # ADR 0018: Crypto-shredding of personal data in the event log
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

@@ -5,12 +5,14 @@ OpenID Connect and OAuth 2.0 provider, multi-tenant organizations, passkeys and 
 identities for services and AI agents, and an event-sourced audit trail. Apache-2.0.
 
 **Status: Phase A, specifications only. Nothing is implemented.** There is no code, no binary
-and no release yet. The specifications are waiting for review.
+and no release yet. The owner approved the specifications and every ADR on 2026-10-21;
+implementation (Phase B) has not started.
 
 ## What it will be
 
 - **An OpenID Provider and OAuth 2.0 authorization server**, OAuth 2.1 behaviour by default:
-  authorization code with PKCE for every client, exact redirect matching, refresh-token rotation
+  authorization code with PKCE for every client (one opt-in exception for confidential OIDC
+  clients that always send `nonce`), exact redirect matching, refresh-token rotation
   with reuse detection, no implicit flow, no password grant.
 - **Multi-tenant from day one:** instances (one issuer each) containing organizations. A single
   org runs on the same code path.
@@ -29,7 +31,8 @@ and no release yet. The specifications are waiting for review.
 ## Where it fits in Loams
 
 Loams design 76 uses Zitadel and OpenFGA for identity and authorization, and lists a Rust-native
-identity provider behind the same traits as a later option. This project builds that option. The
+identity provider behind the same traits as a later option. This project builds that option. Zitadel stays at `auth.loams.dev` until loams-identity passes
+the OpenID conformance plans and a security review after Phase 3. The
 contract with Loams (token claims, identity-sync events, the OpenFGA mapping) is in
 [spec/15-loams-integration.md](spec/15-loams-integration.md).
 
@@ -49,7 +52,7 @@ and implemented in another, and every source is recorded. See
 | [spec/03-data-model.md](spec/03-data-model.md) and [spec/04-event-catalog.md](spec/04-event-catalog.md) | Aggregates, states and every event |
 | [docs/threat-model.md](docs/threat-model.md) | STRIDE threat model and the top threats |
 | [docs/adr/](docs/adr/README.md) | Architecture decisions, including every crate choice |
-| [docs/milestones.md](docs/milestones.md) | Ordered milestones for Phases 1 to 3, and open questions |
+| [docs/milestones.md](docs/milestones.md) | Ordered milestones for Phases 1 to 3, and the owner's decisions |
 
 ## Planned architecture
 

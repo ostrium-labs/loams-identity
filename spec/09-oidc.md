@@ -254,7 +254,7 @@ these OpenID Foundation certification profiles ([OIDF certification]):
 
 | Profile | Phase | Notes |
 |---|---|---|
-| Basic OP | 1 | Code flow. See OAUTH-33 for the PKCE conflict risk |
+| Basic OP | 1 | Code flow. The conformance clients use the opt-in PKCE exception (OAUTH-14a, OAUTH-33) |
 | Config OP | 1 | Discovery and JWKS |
 | Form Post OP | 1 | `response_mode=form_post` with the code flow |
 | RP-Initiated Logout OP | 2 | [10](10-sessions-and-logout.md) |

@@ -13,7 +13,7 @@ check or a client integration pass. The conflict is reported instead (owner's ru
 |---|---|---|
 | SEC-1 | The only authorization `response_type` is `code`. Implicit (`token`, `id_token token`) and hybrid flows are not offered and are refused with `unsupported_response_type`. | protocol |
 | SEC-2 | The resource owner password credentials grant is not implemented. | protocol |
-| SEC-3 | PKCE with `S256` is required for every client, public and confidential. `plain` is refused. A token request for a code issued with a challenge must carry a matching verifier, and a token request with a verifier for a code issued without one is impossible because every code has one ([RFC 9700] section 2.1.1). | security: PKCE downgrade |
+| SEC-3 | PKCE with `S256` is required for every client, public and confidential, except confidential OIDC clients with the opt-in `pkce_exception: nonce`, which must then send `openid` and a `nonce` ([07](07-oauth-core.md) OAUTH-14a, owner decision 2026-10-21). `plain` is refused. A token request for a code issued with a challenge must carry a matching verifier, and a token request with a verifier for a code issued without a challenge is refused ([RFC 9700] section 2.1.1). | security: PKCE downgrade |
 | SEC-4 | Redirect URIs are compared as exact strings after no normalization, except the port of a loopback redirect for native clients ([RFC 8252] section 7.3). | security: redirect confusion, fuzz |
 | SEC-5 | Errors that cannot be tied to a registered redirect URI are shown on our own error page, never redirected ([RFC 6749] section 4.1.2.1). | security: open redirect |
 | SEC-6 | Authorization responses carry `iss` ([RFC 9207]). | protocol |
@@ -85,7 +85,7 @@ check or a client integration pass. The conflict is reported instead (owner's ru
 | SEC-37 | Dependencies pass `cargo-deny` (licences per ADR 0022, advisories, bans, sources) and `cargo-audit` in CI; `cargo-vet` audits are recorded for crypto and protocol crates. | CI |
 | SEC-38 | Every crate with C or assembly code is listed in the C-dependency register (ADR 0022) with a reason. | CI (a test compares the register with `cargo metadata`) |
 | SEC-39 | Releases are built reproducibly in CI and signed; the release notes list the security defaults that changed. | release |
-| SEC-40 | No feature flag or configuration can turn on `alg: none`, implicit flow, ROPC, PKCE `plain` or wildcard redirect URIs. These options do not exist in the code. | review |
+| SEC-40 | No feature flag or configuration can turn on `alg: none`, implicit flow, ROPC, PKCE `plain`, a PKCE exception for a public client, or wildcard redirect URIs. These options do not exist in the code. | review |
 
 ## Sources
 

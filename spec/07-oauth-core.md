@@ -157,9 +157,25 @@ request values, user data or internal detail.
 **OAUTH-14.** Every authorization request, for every client kind, must carry `code_challenge` and
 `code_challenge_method=S256` ([RFC 7636], [RFC 9700] section 2.1.1). A missing challenge, a
 missing method (which means `plain`, [RFC 7636] section 4.3) or `plain` fails with
-`invalid_request` and the description "PKCE with S256 is required". *Conservative choice:* this
-applies to confidential clients too, although [RFC 9700] allows a confidential OIDC client to rely
-on `nonce` instead. See section 11 for the conformance-suite consequence.
+`invalid_request` and the description "PKCE with S256 is required". This applies to confidential
+clients too, with the single exception in OAUTH-14a.
+
+**OAUTH-14a.** *Owner decision, 2026-10-21.* An admin may set `pkce_exception: nonce` on a client
+only if it is a confidential client (`web`) whose `allowed_scopes` include `openid`. For such a
+client, an authorization request without `code_challenge` is accepted only if it carries `openid`
+in `scope` and a non-empty `nonce`; otherwise it fails as in OAUTH-14. This is the allowance in
+[RFC 9700] section 2.1.1 for confidential OpenID Connect clients that use `nonce`. Rules:
+
+- The setting is off by default, is shown in the management API and the admin listing of the
+  client, and every change to it is an audit event (`application.configuration_changed`).
+- A request from such a client that does carry `code_challenge` is handled exactly as in OAUTH-14
+  (S256 only).
+- PKCE downgrade protection ([RFC 9700] section 2.1.1): a token request with `code_verifier` for
+  a code issued without a challenge fails with `invalid_grant`, and a token request without
+  `code_verifier` for a code issued with a challenge fails with `invalid_grant`.
+- The ID token returned for such a code must carry the request's `nonce`; the client is
+  responsible for checking it.
+- Public clients can never have the exception.
 
 **OAUTH-15.** `code_challenge` must be exactly 43 characters of the base64url alphabet (the
 encoding of a 32-byte SHA-256 output). Otherwise `invalid_request`.
@@ -319,12 +335,11 @@ Error pages, the form-post page, the login UI and consent pages send `X-Frame-Op
 
 ## 11. Known conflicts with external test suites
 
-**OAUTH-33.** If the OpenID conformance suite's Basic OP plan sends authorization requests without
-PKCE for confidential clients, those tests fail under OAUTH-14. We do not relax OAUTH-14 to pass.
-The conflict is recorded in `conformance/RESULTS.md` and reported to the owner, who may decide to
-allow a per-client exception for confidential clients that send `nonce` (permitted by
-[RFC 9700] section 2.1.1). The same applies to client assertions with the token endpoint as
-audience (KEY-19).
+**OAUTH-33.** The OpenID conformance suite's Basic OP plan reportedly sends authorization
+requests without PKCE. The conformance clients are registered with `pkce_exception: nonce`
+(OAUTH-14a, owner decision 2026-10-21), and `conformance/RESULTS.md` states that they use it.
+No other default is relaxed for the suite. Client assertions with the token endpoint as audience
+(KEY-19) stay refused; any resulting failure is recorded, not worked around.
 
 ## Sources
 

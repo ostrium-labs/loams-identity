@@ -160,6 +160,7 @@ Every org gets a project named `default` at creation, so Phase 1 applications ha
 | `required_acr` | acr value, optional | The server enforces this level for every login to the client, whatever `acr_values` says ([09](09-oidc.md)) |
 | `default_resource` | application id, optional `[P3]` | The `resource_server` used as the audience when the client sends no `resource` ([08](08-tokens.md) TOK-6) |
 | `agent_user_id` | UserId, optional `[P3]` | Binds the application to one agent (the MCP flow, [13](13-machine-identity.md) MACH-41) |
+| `pkce_exception` | `none` \| `nonce` | Default `none`. `nonce` only for confidential `web` clients with `openid` allowed ([07](07-oauth-core.md) OAUTH-14a) |
 | `dev_mode` | bool | Allows `http://localhost` and `http://127.0.0.1` redirect URIs for non-native kinds; refused in instances with `production: true` |
 
 **DM-10.** A public client has no secret and no keys and its `token_endpoint_auth_method` is
@@ -193,7 +194,7 @@ The state of one authorization transaction, from `/authorize` to the redeemed co
 |---|---|
 | `id`, `instance_id`, `org_id` (set once the user is known; until then the client's org) | |
 | `client_id`, `redirect_uri`, `response_mode`, `scope`, `state`, `nonce` | As received and validated |
-| `code_challenge`, `code_challenge_method` | Always present (PKCE is mandatory, OAUTH-14) |
+| `code_challenge`, `code_challenge_method` | Present unless the client has `pkce_exception: nonce` and sent none (OAUTH-14, OAUTH-14a) |
 | `prompt`, `max_age`, `acr_values`, `login_hint`, `ui_locales`, `org_hint` | |
 | `resource` | list `[P3]` |
 | `status` | Section 4.3 |
@@ -277,7 +278,7 @@ Instance settings hold defaults; org settings override field by field.
 | Session policy | `idle_ttl: 12h`, `absolute_ttl: 30d`, `reauth_for_sensitive: 15m` |
 | Domain policy | `require_verified_org_domains: true`, `login_name_suffix: false` |
 | Machine and delegation (org) `[P3]` | `allow_agent_client_secrets: false`, `delegation_rules` (which agents may act for which users; [13](13-machine-identity.md)) |
-| Instance-only `[P3+]` | `management_clients` ([17](17-management-api.md)), `export_project_tuples: false` ([15](15-loams-integration.md)), `client_id_metadata_documents: false`, `dynamic_registration: false`, `require_pushed_authorization_requests: false` ([20](20-later-standards.md)) |
+| Instance-only `[P3+]` | `management_clients` ([17](17-management-api.md)), `client_id_metadata_documents: false`, `dynamic_registration: false`, `require_pushed_authorization_requests: false` ([20](20-later-standards.md)) |
 | Features | `device_flow`, `token_exchange`, `client_credentials`, `pats` (all `false` until Phase 3 ships, then `true` except `pats`) |
 
 ## 4. State machines

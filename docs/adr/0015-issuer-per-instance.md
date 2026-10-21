@@ -1,6 +1,6 @@
 # ADR 0015: One issuer per instance, host-based routing, org as a claim
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

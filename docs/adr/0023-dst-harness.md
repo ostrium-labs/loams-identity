@@ -1,6 +1,6 @@
 # ADR 0023: Own simulation harness on a single-threaded runtime with paused time
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

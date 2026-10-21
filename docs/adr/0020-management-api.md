@@ -1,6 +1,6 @@
 # ADR 0020: REST first with OpenAPI, gRPC with our own protos; compatible surface later
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

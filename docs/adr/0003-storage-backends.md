@@ -1,6 +1,6 @@
 # ADR 0003: redb first, PostgreSQL second, TiKV later
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

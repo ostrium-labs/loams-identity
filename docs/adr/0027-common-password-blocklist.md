@@ -1,6 +1,6 @@
 # ADR 0027: A bundled common-password blocklist, licence checked before adding
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context
