@@ -74,7 +74,7 @@ the first production deployment at `auth.loams.dev`.
 |---|---|---|
 | S | Redirect URI manipulation to steal codes | Exact match (SEC-4), error page without redirect (SEC-5) |
 | S | Mix-up attacks between authorization servers | `iss` in responses (SEC-6) |
-| T | Code injection by an attacker who holds a stolen code | PKCE for every client (SEC-3) |
+| T | Code injection by an attacker who holds a stolen code | PKCE for every client (SEC-3); the only exception, confidential OIDC clients that opt in, is bound by `nonce` instead (OAUTH-14a) |
 | T | CSRF against the client's callback | `state` passed through; PKCE |
 | I | Leaking codes through Referer or logs | Codes in query only to registered URIs, `Referrer-Policy: no-referrer` on our pages, short lifetime (SEC-7), never logged (SEC-21) |
 | E | Scope escalation by requesting unregistered scopes | Narrowing to `allowed_scopes` ([07](../spec/07-oauth-core.md)) |

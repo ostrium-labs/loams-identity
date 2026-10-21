@@ -49,7 +49,7 @@ All crates are prefixed `loams-identity-`. One Cargo workspace.
 | `sim` | Deterministic simulation harness: fake implementations of every I/O trait with fault injection, a seeded workload driver, invariant checkers. | No real I/O |
 | `conformance` | Glue for the OpenID conformance suite: test-plan configuration, client registrations, result parsing. | Yes (test only) |
 
-The `runtime` crate is an addition to the owner's list. It keeps every real I/O implementation in
+The `runtime` crate is an addition to the owner's list, approved by the owner on 2026-10-21. It keeps every real I/O implementation in
 one place, so the core crates can be checked mechanically for I/O (ADR 0016).
 
 **ARCH-1.** `core` and `events` MUST NOT depend on `tokio` networking or file APIs, `sqlx`,

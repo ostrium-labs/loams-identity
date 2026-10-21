@@ -1,6 +1,6 @@
 # ADR 0008: TOTP with `totp-rs` 6, explicit-time calls only
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

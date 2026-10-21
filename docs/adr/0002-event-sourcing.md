@@ -1,6 +1,6 @@
 # ADR 0002: Event sourcing with per-aggregate streams, inline indexes and asynchronous projections
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

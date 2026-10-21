@@ -1,6 +1,6 @@
 # ADR 0017: Standard claims plus short Loams private claims; no vendor claim names
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

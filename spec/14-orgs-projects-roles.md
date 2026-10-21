@@ -91,7 +91,9 @@ permission name is a programming error, caught by the route-declaration test (AP
 ## 3. Projects
 
 Projects exist from Phase 1 (every org has a `default` project, [03](03-data-model.md) section
-2.4) so applications have a home. Phase 4 adds roles, settings, admins and grants.
+2.4) so applications have a home. Phase 4 adds roles, settings, admins and grants. In a Loams
+deployment, the instance-wide project `loams` holds Loams' applications and coarse roles
+([15](15-loams-integration.md) LOAMS-19a); identity projects are never mirrored to Loams projects.
 
 **ORG-8.** A project belongs to one org for life. Its name is unique within the org.
 Deactivating a project deactivates logins through its applications: authorization requests and
@@ -229,12 +231,13 @@ are returned, in userinfo and the ID token, when the scope `urn:loams:metadata` 
 the claim `metadata` as an object of key to string value (base64url when the value is not valid
 UTF-8, with the key suffixed `#b64`).
 
-## 10. Groups and teams (deferred)
+## 10. Groups and teams (decided: Loams owns teams)
 
-Loams' authorization model has a `team` type with members ([15](15-loams-integration.md) section
-3). Whether teams are owned by this service (as groups, which would later also come from SCIM
-and from upstream IdP group claims) or by Loams' control plane is an open owner decision. Until
-it is made, this service defines no group or team aggregate and exports no team events.
+**ORG-28a.** *Owner decision, 2026-10-21:* teams are owned by Loams' control plane, which writes
+the `team` tuples in OpenFGA ([15](15-loams-integration.md) section 3). This service defines no
+group or team aggregate and exports no team events. Group claims from upstream identity providers
+`[P5]` or SCIM `[later]` are not stored here as groups; if they are needed, they are passed to
+Loams as attributes of the sign-in event and Loams maps them to teams.
 
 ## 11. Tenant scoping
 

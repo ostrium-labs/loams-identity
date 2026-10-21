@@ -15,7 +15,7 @@ This file owns the Loams private claim names (ADR 0017). Other spec files refer 
 | Coarse roles (management roles, project role claims) | Yes | May read claims |
 | Resource-level authorization (`can_*` on projects, environments, databases) | No | Yes, OpenFGA behind `Authorizer` |
 | Resource tuples (project → org, environment → project) | No | Yes, control-plane outbox |
-| Loams' own short-lived tokens (environment-bound, vended to sandboxes) | No (unless the owner decides otherwise, section 2.4) | Yes |
+| Loams' own short-lived tokens (environment-bound, vended to sandboxes) | No (owner decision, section 2.4) | Yes |
 
 **LOAMS-1.** loams-identity never writes OpenFGA tuples itself. It exports events; Loams'
 identity-sync service writes tuples. This keeps one writer per tuple family.
@@ -126,14 +126,12 @@ accepts tokens from this service registers itself as a `resource_server` applica
 `resource_identifiers` are its canonical URIs (for example `https://loams.example.com` and
 `https://loams.example.com/mcp`).
 
-### 2.4 Environment narrowing (open decision)
+### 2.4 Environment narrowing (decided)
 
-Loams' own tokens are bound to one environment (`env`). This service does not know Loams'
-environments. Until the owner decides otherwise, Loams keeps vending environment-bound tokens
-itself, exchanging a token from this service for one of its own (Loams design 19 section 5.2,
-flow 3). The alternative, where this service learns environments as resources and issues `env`
-itself, would make it the only token issuer for Loams; that is an architecture decision for the
-owner.
+**LOAMS-6a.** *Owner decision, 2026-10-21:* this service stays **upstream** of Loams. Loams' own
+token endpoint keeps environment narrowing (`env`) and token vending for sandboxes (Loams design
+19 section 5.2, flow 3), exchanging a token from this service for one of its own. This service
+does not learn Loams' environments and never issues an `env` claim.
 
 ## 3. identity-sync: the event feed
 
@@ -232,14 +230,21 @@ Loams' OpenFGA types are `user`, `agent`, `service_account`, `team`, `org`, `pro
 | `user.deactivated`, `user.removed` (agent or service account) | Delete all tuples for `agent:A` or `service_account:S`; Loams also stops vending tokens for it |
 | `user.reactivated` | Re-read the user's memberships through the management API and write them |
 | `org.deactivated`, `org.removed` | No blind deletion: Loams' control plane removes the org subtree, because it knows the resources |
-| `project.created` | Only if the instance setting `export_project_tuples` is on (default off): write `project:P#org@org:O`. Loams' control plane normally writes project tuples itself (design 76 section 8.2) |
+| `project.created` | Never mapped. Identity projects are not Loams projects; Loams' control plane writes project tuples itself (design 76 section 8.2; LOAMS-19) |
 | `agent_session.ended` | Delete any conditional tuples Loams wrote for that session |
-| `role_assignment.*` `[P4]` | Not mapped by default; an optional mapping table may map a project role key to a relation on a Loams project |
+| `role_assignment.*` `[P4]` | Never mapped. Role assignments in the `loams` project only produce coarse `roles` claims; resource permissions live in OpenFGA and are written by Loams (LOAMS-19a) |
 
 **LOAMS-19.** The "Loams project" an agent or service account names is an opaque reference
 (`loams_project_ref`) that this service stores and exports but does not validate; Loams'
 control plane is its source of truth. Identity projects ([14](14-orgs-projects-roles.md)) are
 containers for applications and roles and are not the same objects.
+
+**LOAMS-19a.** *Owner decision, 2026-10-21:* a Loams deployment uses **one identity project per
+instance, named `loams`**, in the default org. It holds Loams' applications (console, CLI, MCP
+resource server) and the coarse role keys that appear in `roles` claims `[P4]`; other orgs use it
+through project grants ([14](14-orgs-projects-roles.md) section 5). Loams projects, environments
+and their permissions stay in Loams' control plane and OpenFGA. `cli setup` with the Loams
+profile creates the `loams` project.
 
 ## 4. The authorizer shape
 
@@ -345,7 +350,10 @@ process reading the pull feed (no inbound webhook port needed). The light defaul
 keeps Loams' built-in single-org authentication.
 
 **LOAMS-26.** Loams design 76 chose Zitadel and listed "a Rust-native IdP behind the same traits"
-as its optional Phase 6. This project is that IdP. Loams depends only on the standards, on the
+as its optional Phase 6. This project is that IdP. *Owner decision, 2026-10-21:* Zitadel stays
+at `auth.loams.dev` until loams-identity passes the OpenID conformance plans of
+[19](19-verification.md) and an external security review after Phase 3; the switch is decided
+then. LOAMS-23 describes the hosted instance as it will be after such a switch. Loams depends only on the standards, on the
 claims in section 2 and on the event feed in section 3, so the identity provider can be swapped
 without changing Loams' authorization code.
 

@@ -1,6 +1,6 @@
 # ADR 0006: Ed25519, ES256 and RS256 keys; RustCrypto, with RSA signing through aws-lc-rs
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

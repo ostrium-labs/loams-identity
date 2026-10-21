@@ -1,6 +1,6 @@
 # ADR 0012: JWT access tokens by default, opaque on request; opaque refresh tokens
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

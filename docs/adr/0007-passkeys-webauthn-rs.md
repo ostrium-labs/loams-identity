@@ -1,6 +1,6 @@
 # ADR 0007: Passkeys with `webauthn-rs` 0.5 behind a trait (MPL-2.0, OpenSSL flagged)
 
-- Status: Proposed (needs an owner decision on the C dependency)
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context
@@ -38,7 +38,7 @@ The rules allow MPL-2.0 and require flagging C dependencies.
 ## Alternatives considered
 
 - **`webauthn-rp`**: avoids C, but the bus factor and user base are small for a security-critical
-  verifier. Second choice; revisit if the owner rejects OpenSSL.
+  verifier. Second choice, and the first candidate when the pure-Rust option is revisited.
 - **Hand-written**: rejected for Phase 2; the attestation and extension surface is large.
 
 ## Consequences
@@ -49,10 +49,10 @@ The rules allow MPL-2.0 and require flagging C dependencies.
 - `webauthn-rs-core` does not depend on the `rsa` crate (it uses OpenSSL), and a relying party
   only verifies signatures with public keys, so RUSTSEC-2023-0071 does not concern it.
 
-## Owner question
+## Owner decision (2026-10-21)
 
-Accept OpenSSL (through `webauthn-rs`) as a C dependency in the default build, or require a
-pure-Rust passkey stack (`webauthn-rp`, or our own over RustCrypto) and accept the maturity risk?
+OpenSSL through `webauthn-rs` is accepted as a C dependency in the default build, behind the
+`PasskeyVerifier` trait. A pure-Rust stack is to be revisited later, not before Phase 2 ships.
 
 ## Derived from
 

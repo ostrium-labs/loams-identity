@@ -1,6 +1,6 @@
 # ADR 0026: Login UI message catalogues in Project Fluent
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context

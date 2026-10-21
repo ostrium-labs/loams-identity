@@ -1,6 +1,6 @@
 # ADR 0016: A `runtime` crate for real I/O, and a determinism lint
 
-- Status: Proposed
+- Status: Accepted (owner, 2026-10-21)
 - Date: 2026-10-21
 
 ## Context
@@ -24,8 +24,7 @@ with logic; putting them in `core` breaks the no-I/O rule.
 
 ## Consequences
 
-One extra crate. The owner asked to be consulted on architecture changes; this one is small and
-reversible, and is listed in the review summary.
+One extra crate, approved by the owner on 2026-10-21.
 
 ## Derived from
 
