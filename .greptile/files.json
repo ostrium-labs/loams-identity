@@ -1,0 +1,16 @@
+{
+  "files": [
+    {
+      "path": "CONTRIBUTING.md",
+      "description": "Clean-room rules and DCO"
+    },
+    {
+      "path": "docs/adr/0001-clean-room-process.md",
+      "description": "Clean-room process and allowed sources"
+    },
+    {
+      "path": "docs/threat-model.md",
+      "description": "Threat model the code must hold to"
+    }
+  ]
+}

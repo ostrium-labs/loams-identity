@@ -59,6 +59,15 @@ Only crates under Apache-2.0, MIT, BSD, ISC or MPL-2.0 (plus the scoped exceptio
 compiles C code needs an entry in the C-dependency register. `cargo deny check` enforces the
 licence list.
 
+## Code review
+
+Every pull request gets one AI reviewer, never two. In this repository it is
+[Greptile](https://www.greptile.com), configured in [`.greptile/`](.greptile/config.json); it
+reviews pull requests into `main` when they are opened (comment `@greptileai` to re-run it).
+CodeRabbit's automatic review is off ([`.coderabbit.yaml`](.coderabbit.yaml)); it runs only if
+someone comments `@coderabbitai review`. A maintainer reviews after the bot. Answer each bot
+comment; it is fine to disagree and say why.
+
 ## Licence of contributions
 
 Unless you explicitly state otherwise, any contribution you intentionally submit for inclusion in
