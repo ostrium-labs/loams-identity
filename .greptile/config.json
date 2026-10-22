@@ -1,0 +1,62 @@
+{
+  "strictness": 2,
+  "commentTypes": ["logic", "syntax"],
+  "autoReview": ["open"],
+  "triggerOnDrafts": false,
+  "includeBranches": ["main"],
+  "excludeAuthors": ["dependabot[bot]", "nx-cloud[bot]", "github-actions[bot]", "release-please[bot]", "renovate[bot]"],
+  "disabledLabels": ["skip-greptile"],
+  "ignorePatterns": "Cargo.lock\n**/*.snap\n**/__snapshots__/**\n**/snapshots/**\n**/fixtures/**\n**/testdata/**\n**/dist/**\n**/target/**\n**/node_modules/**",
+  "instructions": "loams-identity is a clean-room, Apache-2.0 Rust identity provider (OAuth 2.0, OpenID Connect, passkeys, MFA, machine identity) built from spec/ and public standards only. It is security-critical: review for authentication and authorization flaws, token and key handling, and conformance to the RFCs and OpenID specs first. Clean-room rule: never quote, paraphrase, link to or suggest code, structure or names from Zitadel or its forks and ports, and never say 'Zitadel does it this way'. Ground every suggestion in spec/, the ADRs or a cited standard (IETF RFC, OpenID Foundation, W3C, FIDO, NIST, OWASP). Skip formatting and naming nits.",
+  "rules": [
+    {
+      "id": "clean-room",
+      "severity": "high",
+      "rule": "Never suggest, quote or paraphrase code, schemas, event names, claim names or internal designs from Zitadel (AGPL-3.0) or its forks and ports, and never cite a source that walks through its internals. If a change looks derived from such material, say so and ask for a redesign from the standards. Changes to spec/ update the file's Sources section and PROVENANCE.md."
+    },
+    {
+      "id": "authn-authz",
+      "severity": "high",
+      "rule": "Deny by default. Check redirect URI exact matching, PKCE, state and nonce, token audience, issuer and expiry checks, refresh-token rotation and reuse detection, tenant isolation on every lookup, and that failure paths never grant access."
+    },
+    {
+      "id": "crypto",
+      "severity": "high",
+      "scope": ["**/*.rs"],
+      "rule": "Secrets and tokens are compared in constant time, generated from a CSPRNG and zeroised when dropped; no home-made crypto; algorithms are allow-listed (no 'none', no algorithm taken from the token); passwords use the ADR 0009 Argon2id parameters."
+    },
+    {
+      "id": "no-unwrap",
+      "severity": "high",
+      "scope": ["**/*.rs"],
+      "rule": "Non-test Rust code must not call unwrap() or expect() unless a comment says why it cannot fail; no panics reachable from requests. Errors shown to clients must not leak whether an account exists or internal details."
+    },
+    {
+      "id": "no-secrets",
+      "severity": "high",
+      "rule": "Never print, log, commit or echo secrets: tokens, passwords, keys, connection strings with credentials or Authorization headers, including in error messages, debug output, tests and CI logs. Flag any secret in the diff."
+    },
+    {
+      "id": "licence",
+      "severity": "high",
+      "rule": "Dependencies only under Apache-2.0, MIT, BSD, ISC or MPL-2.0 plus ADR 0022's scoped exceptions; no GPL, AGPL, LGPL, BSL, FSL, SSPL or ELv2 code or dependency (Loams D11, D1574)."
+    },
+    {
+      "id": "ci-workflows",
+      "severity": "medium",
+      "scope": [".github/**"],
+      "rule": "Workflows keep least-privilege permissions, pin third-party actions to a full commit SHA, and never expose secrets to pull_request_target code from forks."
+    },
+    {
+      "id": "plain-docs",
+      "severity": "low",
+      "scope": ["**/*.md", "**/*.mdx"],
+      "rule": "Docs are plain English: short sentences, no marketing language, statuses not overstated. Commands, flags, paths and links must be correct. Flag only real errors, not wording preferences."
+    },
+    {
+      "id": "dco",
+      "severity": "low",
+      "rule": "Every commit needs a DCO Signed-off-by trailer (git commit -s); the DCO check enforces it, so mention it only if the PR asks contributors to skip it."
+    }
+  ]
+}
