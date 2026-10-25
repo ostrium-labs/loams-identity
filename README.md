@@ -4,9 +4,10 @@ A clean-room identity provider in Rust for [Loams](https://github.com/ostrium-la
 OpenID Connect and OAuth 2.0 provider, multi-tenant organizations, passkeys and MFA, machine
 identities for services and AI agents, and an event-sourced audit trail. Apache-2.0.
 
-**Status: Phase A, specifications only. Nothing is implemented.** There is no code, no binary
-and no release yet. The owner approved the specifications and every ADR on 2026-10-21;
-implementation (Phase B) has not started.
+**Status: Phase B has started; nothing works yet.** The owner approved the specifications and
+every ADR on 2026-10-21. Milestone M1.1 is done: the Cargo workspace with its fourteen empty
+crates, the determinism lint, `deny.toml` and CI ([milestones](docs/milestones.md)). There is no
+working binary and no release yet.
 
 ## What it will be
 

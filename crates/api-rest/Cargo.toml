@@ -1,0 +1,16 @@
+[package]
+name = "loams-identity-api-rest"
+description = "loams-identity: Management API over HTTP/JSON with an OpenAPI document"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+loams-identity-core = { path = "../core" }
+loams-identity-events = { path = "../events" }

@@ -1,0 +1,23 @@
+[package]
+name = "loams-identity-sim"
+description = "loams-identity: Deterministic simulation harness"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+loams-identity-core = { path = "../core" }
+loams-identity-events = { path = "../events" }
+loams-identity-store-redb = { path = "../store-redb" }
+loams-identity-oidc = { path = "../oidc" }
+loams-identity-authn = { path = "../authn" }
+loams-identity-federation = { path = "../federation" }
+loams-identity-api-rest = { path = "../api-rest" }
+loams-identity-api-grpc = { path = "../api-grpc" }
+loams-identity-login-ui = { path = "../login-ui" }

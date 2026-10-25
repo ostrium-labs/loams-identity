@@ -1,0 +1,107 @@
+# Determinism lint: ARCH-7 and ARCH-8 in spec/01-architecture.md, ADR 0016.
+#
+# Applies to every crate except loams-identity-runtime, loams-identity-cli, the store crates and
+# test code, which opt out with `#![allow(clippy::disallowed_methods, clippy::disallowed_types)]`
+# in their crate root (ADR 0016). The lint levels are set to deny in the workspace Cargo.toml.
+# scripts/check-determinism.sh is the grep backstop for macros and re-exports clippy misses, and
+# scripts/check-determinism-lint.sh proves this list rejects a planted `SystemTime::now`.
+#
+# Paths for crates that are not yet dependencies are listed anyway; clippy ignores paths it
+# cannot resolve, and they take effect when the crate is added.
+
+# ARCH-12: unwrap, expect and panic are denied outside tests only.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+
+disallowed-methods = [
+    # Wall clock and monotonic clock: time comes from `Clock`.
+    { path = "std::time::SystemTime::now", reason = "use the Clock trait (ARCH-7)" },
+    { path = "std::time::Instant::now", reason = "use the Clock trait (ARCH-7)" },
+    { path = "chrono::Utc::now", reason = "use the Clock trait (ARCH-7)" },
+    { path = "chrono::Local::now", reason = "use the Clock trait (ARCH-7)" },
+    { path = "time::OffsetDateTime::now_utc", reason = "use the Clock trait (ARCH-7)" },
+    { path = "time::OffsetDateTime::now_local", reason = "use the Clock trait (ARCH-7)" },
+    { path = "time::UtcDateTime::now", reason = "use the Clock trait (ARCH-7)" },
+    { path = "tokio::time::Instant::now", reason = "use the Clock trait (ARCH-7)" },
+    # OS randomness: random bytes come from `Rng`.
+    { path = "rand::thread_rng", reason = "use the Rng trait (ARCH-7)" },
+    { path = "rand::rng", reason = "use the Rng trait (ARCH-7)" },
+    { path = "rand::random", reason = "use the Rng trait (ARCH-7)" },
+    { path = "getrandom::getrandom", reason = "use the Rng trait (ARCH-7)" },
+    { path = "getrandom::fill", reason = "use the Rng trait (ARCH-7)" },
+    { path = "getrandom::fill_uninit", reason = "use the Rng trait (ARCH-7)" },
+    { path = "getrandom::u32", reason = "use the Rng trait (ARCH-7)" },
+    { path = "getrandom::u64", reason = "use the Rng trait (ARCH-7)" },
+    { path = "uuid::Uuid::new_v4", reason = "build UUIDv7 from Clock and Rng (ARCH-10, ADR 0013)" },
+    { path = "uuid::Uuid::now_v7", reason = "build UUIDv7 from Clock and Rng (ARCH-10, ADR 0013)" },
+    { path = "uuid::Uuid::now_v1", reason = "build UUIDv7 from Clock and Rng (ARCH-10, ADR 0013)" },
+    { path = "uuid::Uuid::now_v6", reason = "build UUIDv7 from Clock and Rng (ARCH-10, ADR 0013)" },
+    # openidconnect and oauth2 constructors that read the OS random source (ARCH-8).
+    { path = "oauth2::CsrfToken::new_random", reason = "build from the Rng trait (ARCH-8)" },
+    { path = "oauth2::CsrfToken::new_random_len", reason = "build from the Rng trait (ARCH-8)" },
+    { path = "oauth2::PkceCodeChallenge::new_random_sha256", reason = "build from the Rng trait (ARCH-8)" },
+    { path = "oauth2::PkceCodeChallenge::new_random_sha256_len", reason = "build from the Rng trait (ARCH-8)" },
+    { path = "oauth2::PkceCodeVerifier::new_random", reason = "build from the Rng trait (ARCH-8)" },
+    { path = "oauth2::PkceCodeVerifier::new_random_len", reason = "build from the Rng trait (ARCH-8)" },
+    { path = "openidconnect::CsrfToken::new_random", reason = "build from the Rng trait (ARCH-8)" },
+    { path = "openidconnect::CsrfToken::new_random_len", reason = "build from the Rng trait (ARCH-8)" },
+    { path = "openidconnect::Nonce::new_random", reason = "build from the Rng trait (ARCH-8)" },
+    { path = "openidconnect::Nonce::new_random_len", reason = "build from the Rng trait (ARCH-8)" },
+    { path = "openidconnect::PkceCodeChallenge::new_random_sha256", reason = "build from the Rng trait (ARCH-8)" },
+    { path = "openidconnect::PkceCodeChallenge::new_random_sha256_len", reason = "build from the Rng trait (ARCH-8)" },
+    { path = "openidconnect::PkceCodeVerifier::new_random", reason = "build from the Rng trait (ARCH-8)" },
+    { path = "openidconnect::PkceCodeVerifier::new_random_len", reason = "build from the Rng trait (ARCH-8)" },
+    # Background work is registered with the scheduler, never spawned directly.
+    { path = "std::thread::spawn", reason = "register work with the scheduler (ARCH-7)" },
+    { path = "std::thread::Builder::spawn", reason = "register work with the scheduler (ARCH-7)" },
+    { path = "std::thread::scope", reason = "register work with the scheduler (ARCH-7)" },
+    { path = "tokio::spawn", reason = "register work with the scheduler (ARCH-7)" },
+    { path = "tokio::task::spawn", reason = "register work with the scheduler (ARCH-7)" },
+    { path = "tokio::task::spawn_blocking", reason = "register work with the scheduler (ARCH-7)" },
+    { path = "tokio::task::spawn_local", reason = "register work with the scheduler (ARCH-7)" },
+    # Direct I/O: these crates reach the outside world only through traits (ARCH-1, ARCH-2).
+    { path = "std::fs::read", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::read_to_string", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::read_dir", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::write", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::create_dir", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::create_dir_all", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::remove_file", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::remove_dir", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::remove_dir_all", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::rename", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::copy", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::metadata", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::canonicalize", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::env::var", reason = "configuration is loaded by the cli crate (ARCH-1)" },
+    { path = "std::env::var_os", reason = "configuration is loaded by the cli crate (ARCH-1)" },
+    { path = "std::env::vars", reason = "configuration is loaded by the cli crate (ARCH-1)" },
+    { path = "std::process::exit", reason = "no process control outside the cli crate (ARCH-1)" },
+    { path = "std::process::abort", reason = "no process control outside the cli crate (ARCH-1)" },
+]
+
+disallowed-types = [
+    # Clocks and OS random sources (ARCH-7).
+    { path = "std::time::SystemTime", reason = "use the Clock trait (ARCH-7)" },
+    { path = "std::time::Instant", reason = "use the Clock trait (ARCH-7)" },
+    { path = "rand::rngs::OsRng", reason = "use the Rng trait (ARCH-7)" },
+    { path = "rand::rngs::ThreadRng", reason = "use the Rng trait (ARCH-7)" },
+    { path = "rand_core::OsRng", reason = "use the Rng trait (ARCH-7)" },
+    { path = "rand_core::os::OsRng", reason = "use the Rng trait (ARCH-7)" },
+    { path = "getrandom::SysRng", reason = "use the Rng trait (ARCH-7)" },
+    # Direct file, network and process I/O (ARCH-1, ARCH-2).
+    { path = "std::fs::File", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::OpenOptions", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::fs::ReadDir", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "std::net::TcpListener", reason = "the cli crate binds listeners (ARCH-2)" },
+    { path = "std::net::TcpStream", reason = "network I/O goes through a trait (ARCH-1)" },
+    { path = "std::net::UdpSocket", reason = "network I/O goes through a trait (ARCH-1)" },
+    { path = "std::process::Command", reason = "no subprocesses outside the cli crate (ARCH-1)" },
+    { path = "std::process::Child", reason = "no subprocesses outside the cli crate (ARCH-1)" },
+    { path = "tokio::fs::File", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
+    { path = "tokio::net::TcpListener", reason = "the cli crate binds listeners (ARCH-2)" },
+    { path = "tokio::net::TcpStream", reason = "network I/O goes through a trait (ARCH-1)" },
+    { path = "tokio::net::UdpSocket", reason = "network I/O goes through a trait (ARCH-1)" },
+    { path = "tokio::process::Command", reason = "no subprocesses outside the cli crate (ARCH-1)" },
+]
