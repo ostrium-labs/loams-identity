@@ -6,7 +6,7 @@ has started. It runs in a fresh agent session working from `spec/` and the stand
 
 | Milestone | State | Pull request |
 |---|---|---|
-| M1.1 | Done | The pull request titled "M1.1: workspace skeleton, determinism lint, deny, CI" |
+| M1.1 | Done | [#3](https://github.com/ostrium-labs/loams-identity/pull/3) |
 
 Each milestone is small enough for one pull request or a short series. After each one:
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, tests, `cargo deny check`, then a
