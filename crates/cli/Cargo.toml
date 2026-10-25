@@ -1,0 +1,29 @@
+[package]
+name = "loams-identity-cli"
+description = "loams-identity: The loams-identity binary"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "loams-identity"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+loams-identity-core = { path = "../core" }
+loams-identity-events = { path = "../events" }
+loams-identity-store-redb = { path = "../store-redb" }
+loams-identity-store-postgres = { path = "../store-postgres" }
+loams-identity-oidc = { path = "../oidc" }
+loams-identity-authn = { path = "../authn" }
+loams-identity-federation = { path = "../federation" }
+loams-identity-api-rest = { path = "../api-rest" }
+loams-identity-api-grpc = { path = "../api-grpc" }
+loams-identity-login-ui = { path = "../login-ui" }
+loams-identity-runtime = { path = "../runtime" }

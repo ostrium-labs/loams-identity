@@ -1,0 +1,124 @@
+# cargo-deny configuration: ADR 0022 (licence policy and supply chain), SEC-37.
+# Run with `cargo deny check`. cargo-audit runs separately in CI (ADR 0022).
+
+[graph]
+all-features = true
+
+[advisories]
+# RustSec advisory database. Vulnerabilities are always errors in config version 2.
+version = 2
+yanked = "deny"
+unmaintained = "all"
+unsound = "all"
+# Every ignored advisory needs an id, a reason and a link to the issue tracking its removal.
+ignore = []
+
+[licenses]
+version = 2
+# ADR 0022: the allowlist. Everything else is denied, including GPL, AGPL, LGPL, SSPL, BUSL,
+# licences with field-of-use limits, and crates without a licence.
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "MIT-0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MPL-2.0",
+]
+confidence-threshold = 0.93
+# The allowlist is policy, so it is not trimmed when a licence is not yet in use.
+unused-allowed-license = "allow"
+
+# ADR 0022 scoped exceptions (owner, 2026-10-21). Each names the crates it covers; a new crate
+# under one of these licences needs its own entry here and a line in ADR 0022.
+# Unicode-3.0: the ICU4X crates, which arrive through url -> idna.
+[[licenses.exceptions]]
+crate = "icu_collections"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "icu_locale_core"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "icu_normalizer"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "icu_normalizer_data"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "icu_properties"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "icu_properties_data"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "icu_provider"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "litemap"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "potential_utf"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "tinystr"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "writeable"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "yoke"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "yoke-derive"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "zerofrom"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "zerofrom-derive"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "zerotrie"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "zerovec"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "zerovec-derive"
+allow = ["Unicode-3.0"]
+# CDLA-Permissive-2.0: rustls root certificates for outbound HTTPS.
+[[licenses.exceptions]]
+crate = "webpki-roots"
+allow = ["CDLA-Permissive-2.0"]
+[[licenses.exceptions]]
+crate = "webpki-root-certs"
+allow = ["CDLA-Permissive-2.0"]
+# Zlib: a hasher used by some collection crates.
+[[licenses.exceptions]]
+crate = "foldhash"
+allow = ["Zlib"]
+
+[licenses.private]
+# Our own crates are checked too: each declares Apache-2.0.
+ignore = false
+
+[bans]
+# ADR 0022: duplicate versions are banned; add a `skip` entry with a reason for each accepted
+# duplicate (ADR 0005 expects some while the JOSE stack moves to new major versions).
+multiple-versions = "deny"
+wildcards = "deny"
+# Path dependencies between workspace crates (all `publish = false`) carry no version.
+allow-wildcard-paths = true
+highlight = "all"
+skip = []
+skip-tree = []
+deny = []
+
+[sources]
+# ADR 0022: crates.io only; a git dependency needs an ADR and an entry here.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

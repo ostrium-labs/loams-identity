@@ -1,9 +1,12 @@
 # Milestone plan
 
 Status: Phase A (specifications) was reviewed and approved by the owner on 2026-10-21. Phase B
-has **not** started: the owner gave the ClickHouse-compatible engine priority. When it starts, it
-runs in a fresh agent session working from `spec/` and the standards alone (ADR 0001). No
-milestone below has started.
+has started. It runs in a fresh agent session working from `spec/` and the standards alone
+(ADR 0001). M1.1 is done; no other milestone has started.
+
+| Milestone | State | Pull request |
+|---|---|---|
+| M1.1 | Done | The pull request titled "M1.1: workspace skeleton, determinism lint, deny, CI" |
 
 Each milestone is small enough for one pull request or a short series. After each one:
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, tests, `cargo deny check`, then a

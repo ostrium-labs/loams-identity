@@ -1,0 +1,12 @@
+[package]
+name = "loams-identity-core"
+description = "loams-identity: Domain types, aggregates, commands, protocol state machines and the I/O trait definitions"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
