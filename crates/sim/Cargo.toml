@@ -21,3 +21,10 @@ loams-identity-federation = { path = "../federation" }
 loams-identity-api-rest = { path = "../api-rest" }
 loams-identity-api-grpc = { path = "../api-grpc" }
 loams-identity-login-ui = { path = "../login-ui" }
+rand_chacha = { version = "0.9.0", default-features = false }
+rand_core = { version = "0.9.5", default-features = false }
+sha2 = "0.10.9"
+hmac = "0.12.1"
+
+[dev-dependencies]
+loams-identity-core = { path = "../core", features = ["contract-tests"] }
