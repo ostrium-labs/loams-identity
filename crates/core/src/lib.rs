@@ -7,3 +7,9 @@
 
 // Test code is exempt from the determinism lint (ADR 0016).
 #![cfg_attr(test, allow(clippy::disallowed_methods, clippy::disallowed_types))]
+
+mod ports;
+pub use ports::*;
+
+#[cfg(feature = "contract-tests")]
+pub mod contracts;

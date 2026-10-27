@@ -87,8 +87,8 @@ disallowed-types = [
     { path = "std::time::Instant", reason = "use the Clock trait (ARCH-7)" },
     { path = "rand::rngs::OsRng", reason = "use the Rng trait (ARCH-7)" },
     { path = "rand::rngs::ThreadRng", reason = "use the Rng trait (ARCH-7)" },
-    { path = "rand_core::OsRng", reason = "use the Rng trait (ARCH-7)" },
-    { path = "rand_core::os::OsRng", reason = "use the Rng trait (ARCH-7)" },
+    { path = "rand_core::OsRng", reason = "use the Rng trait (ARCH-7)", allow-invalid = true },
+    { path = "rand_core::os::OsRng", reason = "use the Rng trait (ARCH-7)", allow-invalid = true },
     { path = "getrandom::SysRng", reason = "use the Rng trait (ARCH-7)" },
     # Direct file, network and process I/O (ARCH-1, ARCH-2).
     { path = "std::fs::File", reason = "I/O goes through a trait implemented in runtime (ARCH-1)" },
