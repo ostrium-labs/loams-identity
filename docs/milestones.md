@@ -2,11 +2,12 @@
 
 Status: Phase A (specifications) was reviewed and approved by the owner on 2026-10-21. Phase B
 has started. It runs in a fresh agent session working from `spec/` and the standards alone
-(ADR 0001). M1.1 is done; no other milestone has started.
+(ADR 0001). M1.1 and M1.2 are done.
 
 | Milestone | State | Pull request |
 |---|---|---|
 | M1.1 | Done | [#3](https://github.com/ostrium-labs/loams-identity/pull/3) |
+| M1.2 | Done | [#5](https://github.com/ostrium-labs/loams-identity/pull/5) |
 
 Each milestone is small enough for one pull request or a short series. After each one:
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, tests, `cargo deny check`, then a
