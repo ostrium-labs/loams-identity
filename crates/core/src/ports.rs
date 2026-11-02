@@ -50,9 +50,9 @@ pub trait Clock: Send + Sync {
     /// Nanoseconds since this clock's origin; wall-clock jumps must never affect it.
     fn monotonic(&self) -> u64;
 }
-pub trait Rng: Send {
+pub trait Rng: Send + Sync {
     /// Fill the entire buffer, or return an error. Production sources must be cryptographic.
-    fn fill(&mut self, bytes: &mut [u8]) -> Result<(), PortError>;
+    fn fill(&self, bytes: &mut [u8]) -> Result<(), PortError>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -81,27 +81,19 @@ pub struct DataKey {
 }
 /// KEY-10: algorithm mismatch fails; destroyed keys can never sign or unwrap again.
 /// Lifecycle policy belongs to core commands; private material stays inside the implementation.
-pub trait KeyStore: Send {
-    fn generate<'a>(
-        &'a mut self,
-        instance: &'a str,
-        algorithm: Algorithm,
-    ) -> Operation<'a, PublicKey>;
+pub trait KeyStore: Send + Sync {
+    fn generate<'a>(&'a self, instance: &'a str, algorithm: Algorithm) -> Operation<'a, PublicKey>;
     fn sign<'a>(
-        &'a mut self,
+        &'a self,
         key: &'a KeyHandle,
         algorithm: Algorithm,
         message: &'a [u8],
     ) -> Operation<'a, SecretBytes>;
     fn public_jwk<'a>(&'a self, key: &'a KeyHandle) -> Operation<'a, PublicKey>;
-    fn destroy<'a>(&'a mut self, key: &'a KeyHandle) -> Operation<'a, ()>;
-    fn new_data_key<'a>(
-        &'a mut self,
-        instance: &'a str,
-        purpose: &'a str,
-    ) -> Operation<'a, DataKey>;
+    fn destroy<'a>(&'a self, key: &'a KeyHandle) -> Operation<'a, ()>;
+    fn new_data_key<'a>(&'a self, instance: &'a str, purpose: &'a str) -> Operation<'a, DataKey>;
     fn unwrap_data_key<'a>(&'a self, wrapped: &'a SecretBytes) -> Operation<'a, SecretBytes>;
-    fn destroy_data_key<'a>(&'a mut self, key: &'a KeyHandle) -> Operation<'a, ()>;
+    fn destroy_data_key<'a>(&'a self, key: &'a KeyHandle) -> Operation<'a, ()>;
     /// Uses an index-purpose data-key handle; rejects signing-key handles.
     fn hmac<'a>(&'a self, key: &'a KeyHandle, message: &'a [u8]) -> Operation<'a, SecretBytes>;
 }
@@ -113,16 +105,16 @@ pub struct CacheKey {
     pub namespace: String,
     pub key: String,
 }
-pub trait Cache: Send {
+pub trait Cache: Send + Sync {
     /// Expired entries (expires_at <= Clock::now) are misses.
-    fn get<'a>(&'a mut self, key: &'a CacheKey) -> Operation<'a, Option<SecretBytes>>;
+    fn get<'a>(&'a self, key: &'a CacheKey) -> Operation<'a, Option<SecretBytes>>;
     fn put<'a>(
-        &'a mut self,
+        &'a self,
         key: CacheKey,
         value: SecretBytes,
         expires_at: Timestamp,
     ) -> Operation<'a, ()>;
-    fn remove<'a>(&'a mut self, key: &'a CacheKey) -> Operation<'a, ()>;
+    fn remove<'a>(&'a self, key: &'a CacheKey) -> Operation<'a, ()>;
 }
 
 #[derive(Debug, Clone)]
@@ -144,8 +136,8 @@ pub struct HttpResponse {
     pub body: SecretBytes,
 }
 /// One request, no redirects. Runtime validates and pins resolved addresses (LOAMS-21).
-pub trait HttpClient: Send {
-    fn execute<'a>(&'a mut self, request: HttpRequest) -> Operation<'a, HttpResponse>;
+pub trait HttpClient: Send + Sync {
+    fn execute<'a>(&'a self, request: HttpRequest) -> Operation<'a, HttpResponse>;
 }
 #[derive(Debug, Clone)]
 pub struct Mail {
@@ -154,8 +146,8 @@ pub struct Mail {
     pub template: String,
     pub parameters: BTreeMap<String, SecretBytes>,
 }
-pub trait Mailer: Send {
-    fn send<'a>(&'a mut self, mail: Mail) -> Operation<'a, ()>;
+pub trait Mailer: Send + Sync {
+    fn send<'a>(&'a self, mail: Mail) -> Operation<'a, ()>;
 }
 /// Serialized export; typed CloudEvents and envelopes arrive in M1.3/M1.14.
 #[derive(Debug, Clone)]
@@ -165,8 +157,8 @@ pub struct ExportedEvent {
     pub payload: SecretBytes,
 }
 /// Success acknowledges delivery; retries can duplicate an event with the same id.
-pub trait EventSink: Send {
-    fn deliver<'a>(&'a mut self, event: ExportedEvent) -> Operation<'a, ()>;
+pub trait EventSink: Send + Sync {
+    fn deliver<'a>(&'a self, event: ExportedEvent) -> Operation<'a, ()>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -204,11 +196,11 @@ pub struct Permission {
     pub object: String,
 }
 /// Deny by default. Batch output preserves input order; lists are sorted and unique.
-pub trait Authorizer: Send {
-    fn check<'a>(&'a mut self, permission: Permission) -> Operation<'a, bool>;
-    fn batch_check<'a>(&'a mut self, permissions: Vec<Permission>) -> Operation<'a, Vec<bool>>;
+pub trait Authorizer: Send + Sync {
+    fn check<'a>(&'a self, permission: Permission) -> Operation<'a, bool>;
+    fn batch_check<'a>(&'a self, permissions: Vec<Permission>) -> Operation<'a, Vec<bool>>;
     fn list_objects<'a>(
-        &'a mut self,
+        &'a self,
         instance: &'a str,
         subject: &'a Subject,
         relation: &'a str,
@@ -225,7 +217,7 @@ pub struct PasswordCheck {
     pub matches: bool,
     pub needs_rehash: bool,
 }
-pub trait PasswordHasher: Send {
+pub trait PasswordHasher: Send + Sync {
     /// Salt must be exactly 16 bytes from Rng (ADR 0009); this method hides no random draw.
     fn hash<'a>(
         &'a self,

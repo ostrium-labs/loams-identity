@@ -7,6 +7,15 @@ use std::{
     sync::{Arc, Mutex, MutexGuard},
 };
 
+/// Lock a fake's state, recovering it after a test-driver panic poisoned the lock.
+/// Fakes never hold a guard across an `.await`: they lock, compute, unlock, then return.
+pub(crate) fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    match mutex.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    }
+}
+
 #[derive(Default)]
 struct Time {
     wall: Timestamp,
@@ -21,11 +30,8 @@ impl SimClock {
         Self(Arc::new(Mutex::new(Time { wall, monotonic: 0 })))
     }
     fn time(&self) -> MutexGuard<'_, Time> {
-        // The state contains only scalar timestamps. Recover it after a test-driver panic.
-        match self.0.lock() {
-            Ok(time) => time,
-            Err(poisoned) => poisoned.into_inner(),
-        }
+        // The state contains only scalar timestamps, so a poisoned lock is safe to recover.
+        lock(&self.0)
     }
     /// Advance both clocks atomically, or change neither on overflow.
     pub fn advance(&self, ns: u64) -> Result<(), PortError> {
@@ -52,64 +58,65 @@ impl Clock for SimClock {
 }
 
 /// Reproducible ChaCha20 stream. Never use a fixed seed in a production random source.
-pub struct SeededRng(ChaCha20Rng);
+/// Clones of an `Arc<SeededRng>` draw from one shared stream, in call order.
+pub struct SeededRng(Mutex<ChaCha20Rng>);
 impl SeededRng {
     pub fn new(seed: [u8; 32]) -> Self {
-        Self(ChaCha20Rng::from_seed(seed))
+        Self(Mutex::new(ChaCha20Rng::from_seed(seed)))
     }
 }
 impl Rng for SeededRng {
-    fn fill(&mut self, bytes: &mut [u8]) -> Result<(), PortError> {
-        self.0.fill_bytes(bytes);
+    fn fill(&self, bytes: &mut [u8]) -> Result<(), PortError> {
+        lock(&self.0).fill_bytes(bytes);
         Ok(())
     }
 }
 
 pub struct MemoryCache {
     clock: SimClock,
-    entries: BTreeMap<CacheKey, (Timestamp, SecretBytes)>,
+    entries: Mutex<BTreeMap<CacheKey, (Timestamp, SecretBytes)>>,
 }
 impl MemoryCache {
     pub fn new(clock: SimClock) -> Self {
         Self {
             clock,
-            entries: BTreeMap::new(),
+            entries: Mutex::new(BTreeMap::new()),
         }
     }
 }
 impl Cache for MemoryCache {
-    fn get<'a>(&'a mut self, key: &'a CacheKey) -> Operation<'a, Option<SecretBytes>> {
-        Box::pin(async move {
-            if self
-                .entries
+    fn get<'a>(&'a self, key: &'a CacheKey) -> Operation<'a, Option<SecretBytes>> {
+        let result = {
+            let mut entries = lock(&self.entries);
+            if entries
                 .get(key)
                 .is_some_and(|(expiry, _)| *expiry <= self.clock.now())
             {
-                self.entries.remove(key);
+                entries.remove(key);
             }
-            Ok(self.entries.get(key).map(|(_, value)| value.clone()))
-        })
+            entries.get(key).map(|(_, value)| value.clone())
+        };
+        Box::pin(async move { Ok(result) })
     }
     fn put<'a>(
-        &'a mut self,
+        &'a self,
         key: CacheKey,
         value: SecretBytes,
         expires_at: Timestamp,
     ) -> Operation<'a, ()> {
-        Box::pin(async move {
+        {
+            let mut entries = lock(&self.entries);
             if expires_at <= self.clock.now() {
-                self.entries.remove(&key);
+                entries.remove(&key);
             } else {
-                self.entries.insert(key, (expires_at, value));
+                entries.insert(key, (expires_at, value));
             }
-            Ok(())
-        })
+        }
+        Box::pin(async move { Ok(()) })
     }
-    fn remove<'a>(&'a mut self, key: &'a CacheKey) -> Operation<'a, ()> {
-        Box::pin(async move {
-            self.entries.remove(key);
-            Ok(())
-        })
+    fn remove<'a>(&'a self, key: &'a CacheKey) -> Operation<'a, ()> {
+        lock(&self.entries).remove(key);
+        Box::pin(async move { Ok(()) })
     }
 }
 

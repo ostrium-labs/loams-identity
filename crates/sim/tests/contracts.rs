@@ -32,12 +32,12 @@ fn rng_contract() {
 }
 #[test]
 fn key_store_contract() {
-    run(keys(&mut SimKeyStore::new([42; 32]))).unwrap();
+    run(keys(&SimKeyStore::new([42; 32]))).unwrap();
 }
 #[test]
 fn cache_contract() {
     let time = SimClock::default();
-    run(cache(&mut MemoryCache::new(time.clone()), |ns| {
+    run(cache(&MemoryCache::new(time.clone()), |ns| {
         time.advance(ns).unwrap()
     }))
     .unwrap();
@@ -61,45 +61,41 @@ fn step(connect_ns: u64, latency_ns: u64, response: Result<HttpResponse, PortErr
 #[test]
 fn http_contract() {
     let time = SimClock::default();
-    let mut client = ScriptedHttpClient::new(time.clone());
-    client.script.extend([
+    let client = ScriptedHttpClient::new(time.clone());
+    client.extend_script([
         step(1, 1, Ok(response(b"ok"))),
         step(1, 10, Ok(response(b"ok"))),
         step(1, 1, Ok(response(&[0; 17]))),
     ]);
-    run(http(&mut client)).unwrap();
-    assert_eq!(client.requests.len(), 3);
-    assert!(client.script.is_empty());
+    run(http(&client)).unwrap();
+    assert_eq!(client.requests().len(), 3);
+    assert_eq!(client.remaining(), 0);
     assert_eq!(time.monotonic(), 14);
 }
 #[test]
 fn mailer_contract() {
-    let mut recorder = RecordingMailer::default();
-    recorder
-        .outcomes
-        .extend([Ok(()), Err(PortError::Unavailable)]);
-    run(mailer(&mut recorder)).unwrap();
-    assert_eq!(recorder.attempts.len(), 2);
-    assert_eq!(recorder.delivered.len(), 1);
-    assert_eq!(recorder.delivered[0].to.expose(), mail().to.expose());
+    let recorder = RecordingMailer::default();
+    recorder.extend_outcomes([Ok(()), Err(PortError::Unavailable)]);
+    run(mailer(&recorder)).unwrap();
+    assert_eq!(recorder.attempts().len(), 2);
+    assert_eq!(recorder.delivered().len(), 1);
+    assert_eq!(recorder.delivered()[0].to.expose(), mail().to.expose());
 }
 #[test]
 fn event_sink_contract() {
-    let mut recorder = RecordingEventSink::default();
-    recorder.script.push_back(Delivery::Drop);
-    run(sink(&mut recorder)).unwrap();
-    assert_eq!(recorder.attempts.len(), 3);
-    assert_eq!(recorder.delivered.len(), 2);
-    assert!(recorder.delivered.iter().all(|e| e.id == "1"));
+    let recorder = RecordingEventSink::default();
+    recorder.push_script(Delivery::Drop);
+    run(sink(&recorder)).unwrap();
+    assert_eq!(recorder.attempts().len(), 3);
+    assert_eq!(recorder.delivered().len(), 2);
+    assert!(recorder.delivered().iter().all(|e| e.id == "1"));
 }
 #[test]
 fn authorizer_contract() {
-    let mut recorder = RecordingAuthorizer::default();
-    recorder
-        .allowed
-        .extend([permission("org:2"), permission("org:1")]);
-    run(authorizer(&mut recorder)).unwrap();
-    assert_eq!(recorder.checks.len(), 9);
+    let recorder = RecordingAuthorizer::default();
+    recorder.allow([permission("org:2"), permission("org:1")]);
+    run(authorizer(&recorder)).unwrap();
+    assert_eq!(recorder.checks().len(), 9);
 }
 #[test]
 fn password_contract() {
@@ -108,8 +104,8 @@ fn password_contract() {
 
 #[test]
 fn delivery_faults_preserve_ids_and_reorder_explicitly() {
-    let mut sink = RecordingEventSink::default();
-    sink.script.extend([
+    let sink = RecordingEventSink::default();
+    sink.extend_script([
         Delivery::LoseAck,
         Delivery::Duplicate,
         Delivery::Hold,
@@ -122,7 +118,7 @@ fn delivery_faults_preserve_ids_and_reorder_explicitly() {
     assert_eq!(sink.pending(), 2);
     sink.release_reversed();
     assert_eq!(
-        sink.delivered
+        sink.delivered()
             .iter()
             .map(|e| e.id.as_str())
             .collect::<Vec<_>>(),
@@ -147,7 +143,7 @@ fn clock_overflow_is_atomic() {
 #[test]
 fn cache_expired_read_cannot_resurrect_after_backwards_jump() {
     let time = SimClock::default();
-    let mut cache = MemoryCache::new(time.clone());
+    let cache = MemoryCache::new(time.clone());
     let key = CacheKey {
         instance: "a".into(),
         namespace: "jwks".into(),
@@ -162,25 +158,23 @@ fn cache_expired_read_cannot_resurrect_after_backwards_jump() {
 #[test]
 fn http_unexpected_requests_and_connection_deadlines() {
     let time = SimClock::default();
-    let mut client = ScriptedHttpClient::new(time.clone());
+    let client = ScriptedHttpClient::new(time.clone());
     assert_eq!(
         run(client.execute(http_request())).err(),
         Some(PortError::UnexpectedOperation)
     );
-    client.script.push_back(step(5, 0, Ok(response(b"ok"))));
+    client.push_step(step(5, 0, Ok(response(b"ok"))));
     assert_eq!(
         run(client.execute(http_request())).err(),
         Some(PortError::Timeout)
     );
     assert_eq!(time.monotonic(), 5);
-    client
-        .script
-        .push_back(step(0, 0, Err(PortError::Unavailable)));
+    client.push_step(step(0, 0, Err(PortError::Unavailable)));
     assert_eq!(
         run(client.execute(http_request())).err(),
         Some(PortError::Unavailable)
     );
-    client.script.push_back(step(0, 0, Ok(response(b"ok"))));
+    client.push_step(step(0, 0, Ok(response(b"ok"))));
     let mut request = http_request();
     request.method = "POST".into();
     assert_eq!(
@@ -190,9 +184,9 @@ fn http_unexpected_requests_and_connection_deadlines() {
 }
 #[test]
 fn key_store_same_seed_and_unknown_handles() {
-    let mut first = SimKeyStore::new([1; 32]);
-    let mut second = SimKeyStore::new([1; 32]);
-    let mut different = SimKeyStore::new([2; 32]);
+    let first = SimKeyStore::new([1; 32]);
+    let second = SimKeyStore::new([1; 32]);
+    let different = SimKeyStore::new([2; 32]);
     let key = run(first.generate("a", Algorithm::EdDsa)).unwrap();
     assert_eq!(key, run(second.generate("a", Algorithm::EdDsa)).unwrap());
     assert_ne!(key, run(different.generate("a", Algorithm::EdDsa)).unwrap());
@@ -221,15 +215,15 @@ fn key_store_same_seed_and_unknown_handles() {
 }
 #[test]
 fn authorizer_denies_by_default_and_propagates_failures() {
-    let mut auth = RecordingAuthorizer::default();
+    let auth = RecordingAuthorizer::default();
     assert!(!run(auth.check(permission("org:1"))).unwrap());
-    auth.allowed.insert(permission("org:1"));
-    auth.outcomes.push_back(Err(PortError::Unavailable));
+    auth.allow([permission("org:1")]);
+    auth.extend_outcomes([Err(PortError::Unavailable)]);
     assert_eq!(
         run(auth.check(permission("org:1"))),
         Err(PortError::Unavailable)
     );
-    auth.outcomes.push_back(Err(PortError::Timeout));
+    auth.extend_outcomes([Err(PortError::Timeout)]);
     assert_eq!(
         run(auth.list_objects("a", &permission("org:1").subject, "read", "org")),
         Err(PortError::Timeout)
@@ -260,4 +254,62 @@ fn secret_debug_output_is_redacted_in_nested_types() {
         assert!(!debug.contains(secret));
         assert!(debug.contains("REDACTED"));
     }
+}
+
+#[test]
+fn ports_are_shareable() {
+    use std::sync::Arc;
+    let time = SimClock::new(5);
+    let clock: Arc<dyn Clock> = Arc::new(time.clone());
+    assert_eq!(Arc::clone(&clock).now(), 5);
+    let rng: Arc<dyn Rng> = Arc::new(SeededRng::new([1; 32]));
+    Arc::clone(&rng).fill(&mut [0u8; 8]).unwrap();
+    let store: Arc<dyn KeyStore> = Arc::new(SimKeyStore::new([2; 32]));
+    let key = run(Arc::clone(&store).generate("i1", Algorithm::EdDsa)).unwrap();
+    assert_eq!(run(store.public_jwk(&key.handle)).unwrap(), key);
+    let cache: Arc<dyn Cache> = Arc::new(MemoryCache::new(time.clone()));
+    let cache_key = CacheKey {
+        instance: "a".into(),
+        namespace: "n".into(),
+        key: "k".into(),
+    };
+    run(Arc::clone(&cache).put(cache_key.clone(), SecretBytes::new(vec![1]), 100)).unwrap();
+    assert!(run(cache.get(&cache_key)).unwrap().is_some());
+    let http: Arc<dyn HttpClient> = Arc::new(ScriptedHttpClient::new(time));
+    assert_eq!(
+        run(Arc::clone(&http).execute(http_request())).err(),
+        Some(PortError::UnexpectedOperation)
+    );
+    let mailer: Arc<dyn Mailer> = Arc::new(RecordingMailer::default());
+    run(Arc::clone(&mailer).send(mail())).unwrap();
+    let sink: Arc<dyn EventSink> = Arc::new(RecordingEventSink::default());
+    run(Arc::clone(&sink).deliver(exported("1"))).unwrap();
+    let auth: Arc<dyn Authorizer> = Arc::new(RecordingAuthorizer::default());
+    assert!(!run(Arc::clone(&auth).check(permission("org:1"))).unwrap());
+    let hasher: Arc<dyn PasswordHasher> = Arc::new(FakePasswordHasher);
+    let password = SecretBytes::new(b"pw".to_vec());
+    run(Arc::clone(&hasher).hash(&password, &[0; 16], PasswordProfile::Small)).unwrap();
+}
+
+#[test]
+fn shared_seeded_rng_is_deterministic() {
+    use std::sync::Arc;
+    let first: Arc<dyn Rng> = Arc::new(SeededRng::new([7; 32]));
+    let second: Arc<dyn Rng> = Arc::new(SeededRng::new([7; 32]));
+    let (first_clone, second_clone) = (Arc::clone(&first), Arc::clone(&second));
+    let (mut a, mut b) = (Vec::new(), Vec::new());
+    for round in 0..4 {
+        let (x, y) = if round % 2 == 0 {
+            (&first, &second)
+        } else {
+            (&first_clone, &second_clone)
+        };
+        let (mut chunk_a, mut chunk_b) = ([0u8; 16], [0u8; 16]);
+        x.fill(&mut chunk_a).unwrap();
+        y.fill(&mut chunk_b).unwrap();
+        a.extend_from_slice(&chunk_a);
+        b.extend_from_slice(&chunk_b);
+    }
+    assert_eq!(a.len(), 64);
+    assert_eq!(a, b);
 }

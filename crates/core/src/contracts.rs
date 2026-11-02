@@ -16,8 +16,8 @@ pub fn clock(clock: &impl Clock, mut advance: impl FnMut(u64), mut jump: impl Fn
 }
 
 pub fn rng(mut factory: impl FnMut() -> Box<dyn Rng>) -> Result<(), PortError> {
-    let mut first = factory();
-    let mut second = factory();
+    let first = factory();
+    let second = factory();
     let mut a = [0; 64];
     let mut b = [0; 64];
     first.fill(&mut [])?;
@@ -30,7 +30,7 @@ pub fn rng(mut factory: impl FnMut() -> Box<dyn Rng>) -> Result<(), PortError> {
     Ok(())
 }
 
-pub async fn keys(store: &mut dyn KeyStore) -> Result<(), PortError> {
+pub async fn keys(store: &dyn KeyStore) -> Result<(), PortError> {
     let mut handles = std::collections::BTreeSet::new();
     for algorithm in [Algorithm::EdDsa, Algorithm::Es256, Algorithm::Rs256] {
         let public = store.generate("instance-a", algorithm).await?;
@@ -119,7 +119,7 @@ pub async fn keys(store: &mut dyn KeyStore) -> Result<(), PortError> {
 }
 
 /// Fixture time starts at zero. `advance` changes the injected clock by the given nanoseconds.
-pub async fn cache(cache: &mut dyn Cache, mut advance: impl FnMut(u64)) -> Result<(), PortError> {
+pub async fn cache(cache: &dyn Cache, mut advance: impl FnMut(u64)) -> Result<(), PortError> {
     let key = CacheKey {
         instance: "a".into(),
         namespace: "jwks".into(),
@@ -178,7 +178,7 @@ pub fn http_request() -> HttpRequest {
     }
 }
 /// Fixture returns 200/`ok`, then a Timeout, then a body larger than 16 bytes.
-pub async fn http(client: &mut dyn HttpClient) -> Result<(), PortError> {
+pub async fn http(client: &dyn HttpClient) -> Result<(), PortError> {
     let response = client.execute(http_request()).await?;
     assert_eq!(response.status, 200);
     assert_eq!(response.body.expose(), b"ok");
@@ -201,7 +201,7 @@ pub fn mail() -> Mail {
     }
 }
 /// Fixture accepts one message, then returns Unavailable. Implementation verifies delivery count.
-pub async fn mailer(mailer: &mut dyn Mailer) -> Result<(), PortError> {
+pub async fn mailer(mailer: &dyn Mailer) -> Result<(), PortError> {
     mailer.send(mail()).await?;
     assert_eq!(
         mailer.send(mail()).await.err(),
@@ -217,7 +217,7 @@ pub fn exported(id: &str) -> ExportedEvent {
     }
 }
 /// Fixture fails the first delivery, then accepts a retry and another delivery of the same id.
-pub async fn sink(sink: &mut dyn EventSink) -> Result<(), PortError> {
+pub async fn sink(sink: &dyn EventSink) -> Result<(), PortError> {
     assert_eq!(
         sink.deliver(exported("1")).await.err(),
         Some(PortError::Unavailable)
@@ -241,7 +241,7 @@ pub fn permission(object: &str) -> Permission {
     }
 }
 /// Fixture grants only `permission("org:1")` and `permission("org:2")`.
-pub async fn authorizer(authorizer: &mut dyn Authorizer) -> Result<(), PortError> {
+pub async fn authorizer(authorizer: &dyn Authorizer) -> Result<(), PortError> {
     let yes = permission("org:1");
     let no = permission("org:3");
     assert!(authorizer.check(yes.clone()).await?);
