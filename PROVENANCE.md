@@ -9,7 +9,7 @@ This file records where every specification and decision came from, so the clean
 |---|---|---|
 | 2026-10-21 | Spec-writer (Phase A) | Wrote `spec/00` to `spec/20`, the ADRs, the threat model and the milestone plan. Three sub-sessions of the same spec-writer wrote groups of spec files in parallel from a shared set of fixed decisions; all followed the same rules. |
 | 2026-10-21 | Owner | Reviewed Phase A and approved it with the controller's recommendations; all ADRs Accepted. The eleven decisions are in `docs/milestones.md`. They came from the owner, not from any outside source. |
-| — | Implementer (Phase B) | Not started (the owner gave the ClickHouse-compatible engine priority). Must be a fresh agent session working from `spec/` and the standards only. |
+| 2026-10-25 | Implementer (Phase B) | Started in a fresh agent session working from `spec/`, `docs/adr/`, the standards and crate documentation only. M1.1 (workspace skeleton, determinism lint, `deny.toml`, CI) used spec 01, spec 19, ADR 0016, ADR 0022 and ADR 0023, the clippy, cargo-deny and cargo-audit documentation, and crates.io licence metadata for the ADR 0022 exception crates. No Zitadel material and no other identity-provider implementation was read. |
 
 ## Rules that applied
 

@@ -1,0 +1,15 @@
+[package]
+name = "loams-identity-runtime"
+description = "loams-identity: Real implementations of the I/O traits"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+loams-identity-core = { path = "../core" }
