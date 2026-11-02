@@ -20,7 +20,8 @@ fn run<T>(future: impl Future<Output = T>) -> T {
 #[test]
 fn clock_contract() {
     let time = SimClock::default();
-    clock(
+    clock_port(&time);
+    clock_determinism(
         &time,
         |ns| time.advance(ns).unwrap(),
         |wall| time.jump(wall),
@@ -28,7 +29,8 @@ fn clock_contract() {
 }
 #[test]
 fn rng_contract() {
-    rng(|| Box::new(SeededRng::new([42; 32]))).unwrap();
+    rng_port(&SeededRng::new([42; 32])).unwrap();
+    rng_determinism(|| Box::new(SeededRng::new([42; 32]))).unwrap();
 }
 #[test]
 fn key_store_contract() {
@@ -37,9 +39,11 @@ fn key_store_contract() {
 #[test]
 fn cache_contract() {
     let time = SimClock::default();
-    run(cache(&MemoryCache::new(time.clone()), |ns| {
-        time.advance(ns).unwrap()
-    }))
+    run(cache(
+        &MemoryCache::new(time.clone()),
+        |ns| time.advance(ns).unwrap(),
+        |wall| time.jump(wall),
+    ))
     .unwrap();
 }
 fn response(body: &[u8]) -> HttpResponse {
@@ -95,7 +99,7 @@ fn authorizer_contract() {
     let recorder = RecordingAuthorizer::default();
     recorder.allow([permission("org:2"), permission("org:1")]);
     run(authorizer(&recorder)).unwrap();
-    assert_eq!(recorder.checks().len(), 9);
+    assert_eq!(recorder.checks().len(), 411);
 }
 #[test]
 fn password_contract() {
@@ -156,6 +160,22 @@ fn cache_expired_read_cannot_resurrect_after_backwards_jump() {
     assert!(run(cache.get(&key)).unwrap().is_none());
 }
 #[test]
+fn cache_ttl_overflow_is_capacity() {
+    let time = SimClock::default();
+    time.advance(1).unwrap();
+    let cache = MemoryCache::new(time);
+    let key = CacheKey {
+        instance: "a".into(),
+        namespace: "n".into(),
+        key: "k".into(),
+    };
+    assert_eq!(
+        run(cache.put(key.clone(), SecretBytes::new(vec![1]), u64::MAX)),
+        Err(PortError::Capacity)
+    );
+    assert!(run(cache.get(&key)).unwrap().is_none());
+}
+#[test]
 fn http_unexpected_requests_and_connection_deadlines() {
     let time = SimClock::default();
     let client = ScriptedHttpClient::new(time.clone());
@@ -202,7 +222,7 @@ fn key_store_same_seed_and_unknown_handles() {
     );
     assert_eq!(
         run(first.hmac(&key.handle, b"test")).err(),
-        Some(PortError::KeyNotFound)
+        Some(PortError::AlgorithmMismatch)
     );
     assert_eq!(
         run(first.unwrap_data_key(&SecretBytes::new(vec![0; 32]))).err(),
@@ -244,7 +264,12 @@ fn secret_debug_output_is_redacted_in_nested_types() {
     event.payload = bytes();
     let mut subject = permission("org:1").subject;
     subject.session = Some(SessionId(secret.into()));
+    let handle = KeyHandle {
+        instance: "a".into(),
+        id: secret.into(),
+    };
     for debug in [
+        format!("{handle:?}"),
         format!("{:?}", bytes()),
         format!("{request:?}"),
         format!("{message:?}"),

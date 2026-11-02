@@ -72,9 +72,10 @@ impl Rng for SeededRng {
     }
 }
 
+/// Effects apply at call time, not on poll (see `Operation`). Expiry uses `Clock::monotonic`.
 pub struct MemoryCache {
     clock: SimClock,
-    entries: Mutex<BTreeMap<CacheKey, (Timestamp, SecretBytes)>>,
+    entries: Mutex<BTreeMap<CacheKey, (u64, SecretBytes)>>,
 }
 impl MemoryCache {
     pub fn new(clock: SimClock) -> Self {
@@ -90,7 +91,7 @@ impl Cache for MemoryCache {
             let mut entries = lock(&self.entries);
             if entries
                 .get(key)
-                .is_some_and(|(expiry, _)| *expiry <= self.clock.now())
+                .is_some_and(|(deadline, _)| *deadline <= self.clock.monotonic())
             {
                 entries.remove(key);
             }
@@ -98,21 +99,22 @@ impl Cache for MemoryCache {
         };
         Box::pin(async move { Ok(result) })
     }
-    fn put<'a>(
-        &'a self,
-        key: CacheKey,
-        value: SecretBytes,
-        expires_at: Timestamp,
-    ) -> Operation<'a, ()> {
-        {
+    fn put<'a>(&'a self, key: CacheKey, value: SecretBytes, ttl_ns: u64) -> Operation<'a, ()> {
+        let result = {
             let mut entries = lock(&self.entries);
-            if expires_at <= self.clock.now() {
-                entries.remove(&key);
-            } else {
-                entries.insert(key, (expires_at, value));
+            match self.clock.monotonic().checked_add(ttl_ns) {
+                None => Err(PortError::Capacity),
+                Some(_) if ttl_ns == 0 => {
+                    entries.remove(&key);
+                    Ok(())
+                }
+                Some(deadline) => {
+                    entries.insert(key, (deadline, value));
+                    Ok(())
+                }
             }
-        }
-        Box::pin(async move { Ok(()) })
+        };
+        Box::pin(async move { result })
     }
     fn remove<'a>(&'a self, key: &'a CacheKey) -> Operation<'a, ()> {
         lock(&self.entries).remove(key);

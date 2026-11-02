@@ -1,4 +1,5 @@
 //! Opaque deterministic key model for M1.2. No output is a usable JOSE signature or JWK.
+//! Effects apply at call time, not on poll (see `Operation`).
 //! Real software signing, sealing and interoperability belong to M1.7.
 use crate::{
     SeededRng,
@@ -15,6 +16,7 @@ struct SigningKey {
 }
 struct WrappedKey {
     handle: KeyHandle,
+    purpose: String,
     secret: Option<SecretBytes>,
 }
 struct State {
@@ -45,7 +47,6 @@ impl State {
             algorithm,
             jwk: BTreeMap::from([
                 ("kty".into(), "SIMULATION-ONLY".into()),
-                ("kid".into(), handle.id.clone()),
                 (
                     "public".into(),
                     hex(&digest(&[b"SIM-PUBLIC", secret.expose()])),
@@ -67,7 +68,7 @@ impl State {
         algorithm: Algorithm,
         message: &[u8],
     ) -> Result<SecretBytes, PortError> {
-        let entry = self.signing.get(key).ok_or(PortError::KeyNotFound)?;
+        let entry = self.signing.get(key).ok_or_else(|| self.missing(key))?;
         let secret = entry.secret.as_ref().ok_or(PortError::KeyDestroyed)?;
         if entry.public.algorithm != algorithm {
             return Err(PortError::AlgorithmMismatch);
@@ -77,6 +78,34 @@ impl State {
             secret.expose(),
             message,
         ])))
+    }
+    fn is_data_handle(&self, key: &KeyHandle) -> bool {
+        self.data.values().any(|entry| &entry.handle == key)
+    }
+    /// A handle of the other kind is a mismatch; an unknown one is not found.
+    fn missing(&self, key: &KeyHandle) -> PortError {
+        if self.is_data_handle(key) {
+            PortError::AlgorithmMismatch
+        } else {
+            PortError::KeyNotFound
+        }
+    }
+    fn hmac(&self, key: &KeyHandle, message: &[u8]) -> Result<SecretBytes, PortError> {
+        let Some(entry) = self.data.values().find(|entry| &entry.handle == key) else {
+            return Err(if self.signing.contains_key(key) {
+                PortError::AlgorithmMismatch
+            } else {
+                PortError::KeyNotFound
+            });
+        };
+        if entry.purpose != DATA_KEY_PURPOSE_INDEX {
+            return Err(PortError::AlgorithmMismatch);
+        }
+        let secret = entry.secret.as_ref().ok_or(PortError::KeyDestroyed)?;
+        let mut mac =
+            Hmac::<Sha256>::new_from_slice(secret.expose()).map_err(|_| PortError::InvalidInput)?;
+        mac.update(message);
+        Ok(SecretBytes::new(mac.finalize().into_bytes().to_vec()))
     }
     fn new_data_key(&mut self, instance: &str, purpose: &str) -> Result<DataKey, PortError> {
         if purpose.is_empty() {
@@ -90,6 +119,7 @@ impl State {
             wrapped.clone(),
             WrappedKey {
                 handle: handle.clone(),
+                purpose: purpose.into(),
                 secret: Some(secret),
             },
         );
@@ -125,11 +155,13 @@ impl KeyStore for SimKeyStore {
         Box::pin(async move { result })
     }
     fn public_jwk<'a>(&'a self, key: &'a KeyHandle) -> Operation<'a, PublicKey> {
-        let result = lock(&self.0)
+        let state = lock(&self.0);
+        let result = state
             .signing
             .get(key)
             .map(|entry| entry.public.clone())
-            .ok_or(PortError::KeyNotFound);
+            .ok_or_else(|| state.missing(key));
+        drop(state);
         Box::pin(async move { result })
     }
     fn destroy<'a>(&'a self, key: &'a KeyHandle) -> Operation<'a, ()> {
@@ -162,19 +194,7 @@ impl KeyStore for SimKeyStore {
         Box::pin(async move { result })
     }
     fn hmac<'a>(&'a self, key: &'a KeyHandle, message: &'a [u8]) -> Operation<'a, SecretBytes> {
-        let result = (|| {
-            let state = lock(&self.0);
-            let entry = state
-                .data
-                .values()
-                .find(|entry| &entry.handle == key)
-                .ok_or(PortError::KeyNotFound)?;
-            let secret = entry.secret.as_ref().ok_or(PortError::KeyDestroyed)?;
-            let mut mac = Hmac::<Sha256>::new_from_slice(secret.expose())
-                .map_err(|_| PortError::InvalidInput)?;
-            mac.update(message);
-            Ok(SecretBytes::new(mac.finalize().into_bytes().to_vec()))
-        })();
+        let result = lock(&self.0).hmac(key, message);
         Box::pin(async move { result })
     }
 }

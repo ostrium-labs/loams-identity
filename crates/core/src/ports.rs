@@ -5,6 +5,11 @@ use zeroize::{Zeroize, Zeroizing};
 /// UTC nanoseconds since the Unix epoch. Signed to support simulated backwards jumps.
 pub type Timestamp = i64;
 /// Object-safe, executor-independent asynchronous operations; never starts background work.
+///
+/// Effect timing: a real adapter performs its effect when the future is polled to completion.
+/// A future that is dropped before completion may or may not have taken effect, so a caller must
+/// treat that outcome as unknown. The simulated fakes apply effects at call time, before the
+/// future is polled, and so cannot reveal a caller that depends on a dropped future doing nothing.
 pub type Operation<'a, T> = Pin<Box<dyn Future<Output = Result<T, PortError>> + Send + 'a>>;
 
 /// Stable error classes. Never carry provider responses, credentials, or personal data.
@@ -61,17 +66,29 @@ pub enum Algorithm {
     Es256,
     Rs256,
 }
-/// Opaque, instance-scoped key identity; never private material.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+/// Opaque, instance-scoped key identity; never private material. Key handles are secret class
+/// (DM-5), so Debug redacts the id.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyHandle {
     pub instance: String,
     pub id: String,
+}
+impl fmt::Debug for KeyHandle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("KeyHandle")
+            .field("instance", &self.instance)
+            .field("id", &"[REDACTED]")
+            .finish()
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublicKey {
     pub handle: KeyHandle,
     pub algorithm: Algorithm,
-    /// Public JWK members only. Simulated keys use an explicit simulation-only key type.
+    /// Public key-material JWK members only (for example `kty`, `crv`, `x`, `y`, `n`, `e`).
+    /// Never `kid`, `use` or `alg`: core mints the `kid` from `Rng` (KEY-4, 16 bytes, base64url,
+    /// never derived from key material or the handle) and adds `kid`, `use` and `alg` when it
+    /// builds the JWKS. Simulated keys use an explicit simulation-only key type.
     pub jwk: BTreeMap<String, String>,
 }
 #[derive(Debug)]
@@ -79,8 +96,17 @@ pub struct DataKey {
     pub handle: KeyHandle,
     pub wrapped: SecretBytes,
 }
+/// Purpose of the data key that backs login-name and email uniqueness indexes (DM-6, ADR 0018).
+pub const DATA_KEY_PURPOSE_INDEX: &str = "index";
 /// KEY-10: algorithm mismatch fails; destroyed keys can never sign or unwrap again.
 /// Lifecycle policy belongs to core commands; private material stays inside the implementation.
+///
+/// Handle kinds are not interchangeable. `sign` and `public_jwk` on a data-key handle, and `hmac`
+/// on a signing-key handle or on a data key whose purpose is not `DATA_KEY_PURPOSE_INDEX`, fail
+/// with `AlgorithmMismatch`. A handle the store never issued (or issued for another instance) is
+/// `KeyNotFound`, for every method including `destroy` and `destroy_data_key`.
+/// `unwrap_data_key` on bytes the store did not issue (tampered, truncated, empty) fails with
+/// `KeyNotFound`, or `InvalidInput` when the implementation can tell the envelope is malformed.
 pub trait KeyStore: Send + Sync {
     fn generate<'a>(&'a self, instance: &'a str, algorithm: Algorithm) -> Operation<'a, PublicKey>;
     fn sign<'a>(
@@ -94,7 +120,8 @@ pub trait KeyStore: Send + Sync {
     fn new_data_key<'a>(&'a self, instance: &'a str, purpose: &'a str) -> Operation<'a, DataKey>;
     fn unwrap_data_key<'a>(&'a self, wrapped: &'a SecretBytes) -> Operation<'a, SecretBytes>;
     fn destroy_data_key<'a>(&'a self, key: &'a KeyHandle) -> Operation<'a, ()>;
-    /// Uses an index-purpose data-key handle; rejects signing-key handles.
+    /// Uses a data-key handle created with `DATA_KEY_PURPOSE_INDEX`; any other data-key purpose
+    /// and any signing-key handle fail with `AlgorithmMismatch`.
     fn hmac<'a>(&'a self, key: &'a KeyHandle, message: &'a [u8]) -> Operation<'a, SecretBytes>;
 }
 
@@ -106,14 +133,13 @@ pub struct CacheKey {
     pub key: String,
 }
 pub trait Cache: Send + Sync {
-    /// Expired entries (expires_at <= Clock::now) are misses.
+    /// Expired entries are misses. An entry written with `ttl_ns` expires once `Clock::monotonic`
+    /// has advanced `ttl_ns` past the write (ARCH-11), so a wall-clock jump never revives it;
+    /// `ttl_ns == 0` stores nothing and removes any existing entry; a ttl that overflows monotonic
+    /// time is `Capacity`. Time-to-live is capped by
+    /// the callers' own limits (ADR 0021).
     fn get<'a>(&'a self, key: &'a CacheKey) -> Operation<'a, Option<SecretBytes>>;
-    fn put<'a>(
-        &'a self,
-        key: CacheKey,
-        value: SecretBytes,
-        expires_at: Timestamp,
-    ) -> Operation<'a, ()>;
+    fn put<'a>(&'a self, key: CacheKey, value: SecretBytes, ttl_ns: u64) -> Operation<'a, ()>;
     fn remove<'a>(&'a self, key: &'a CacheKey) -> Operation<'a, ()>;
 }
 
@@ -195,7 +221,14 @@ pub struct Permission {
     pub relation: String,
     pub object: String,
 }
-/// Deny by default. Batch output preserves input order; lists are sorted and unique.
+/// Deny by default. Lists are sorted and unique.
+///
+/// `batch_check` returns exactly one result per input, in input order. An implementation that
+/// cannot produce that returns `Err`, never a short or padded vector (callers using `.all()` would
+/// otherwise fail open).
+///
+/// The session does not take part in authorization matching: a grant on a subject applies
+/// whether or not `Subject::session` is set, and the actor chain is matched without sessions too.
 pub trait Authorizer: Send + Sync {
     fn check<'a>(&'a self, permission: Permission) -> Operation<'a, bool>;
     fn batch_check<'a>(&'a self, permissions: Vec<Permission>) -> Operation<'a, Vec<bool>>;

@@ -208,9 +208,25 @@ struct AuthState {
     checks: Vec<Permission>,
     outcomes: VecDeque<Result<(), PortError>>,
 }
+/// The session takes no part in authorization matching, at any depth of the actor chain.
+fn without_session(subject: &Subject) -> Subject {
+    Subject {
+        kind: subject.kind,
+        id: subject.id.clone(),
+        org: subject.org.clone(),
+        act: subject.act.iter().map(without_session).collect(),
+        session: None,
+    }
+}
+fn normalized(permission: &Permission) -> Permission {
+    Permission {
+        subject: without_session(&permission.subject),
+        ..permission.clone()
+    }
+}
 impl AuthState {
     fn check(&mut self, permission: Permission) -> Result<bool, PortError> {
-        let allowed = self.allowed.contains(&permission);
+        let allowed = self.allowed.contains(&normalized(&permission));
         self.checks.push(permission);
         if let Some(outcome) = self.outcomes.pop_front() {
             outcome?;
@@ -222,7 +238,9 @@ impl AuthState {
 pub struct RecordingAuthorizer(Mutex<AuthState>);
 impl RecordingAuthorizer {
     pub fn allow(&self, permissions: impl IntoIterator<Item = Permission>) {
-        lock(&self.0).allowed.extend(permissions);
+        lock(&self.0)
+            .allowed
+            .extend(permissions.into_iter().map(|p| normalized(&p)));
     }
     /// Each outcome controls exactly one check or list call. Empty means success.
     pub fn extend_outcomes(&self, outcomes: impl IntoIterator<Item = Result<(), PortError>>) {
@@ -260,12 +278,13 @@ impl Authorizer for RecordingAuthorizer {
                 outcome?;
             }
             let prefix = format!("{object_type}:");
+            let subject = without_session(subject);
             Ok(state
                 .allowed
                 .iter()
                 .filter(|p| {
                     p.instance == instance
-                        && &p.subject == subject
+                        && p.subject == subject
                         && p.relation == relation
                         && p.object.starts_with(&prefix)
                 })

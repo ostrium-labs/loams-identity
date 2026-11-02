@@ -3,7 +3,22 @@
 //! Assertions deliberately fail on contract violations; operational failures return typed errors.
 use crate::*;
 
-pub fn clock(clock: &impl Clock, mut advance: impl FnMut(u64), mut jump: impl FnMut(Timestamp)) {
+/// Port contract: every `Clock` implementation, including the production one, passes this.
+pub fn clock_port(clock: &dyn Clock) {
+    let mut monotonic = clock.monotonic();
+    for _ in 0..1000 {
+        let _ = clock.now();
+        let next = clock.monotonic();
+        assert!(next >= monotonic, "monotonic time must never decrease");
+        monotonic = next;
+    }
+}
+/// Determinism contract: fakes only. `advance` moves both clocks; `jump` sets only the wall clock.
+pub fn clock_determinism(
+    clock: &dyn Clock,
+    mut advance: impl FnMut(u64),
+    mut jump: impl FnMut(Timestamp),
+) {
     let wall = clock.now();
     let monotonic = clock.monotonic();
     assert_eq!(clock.now(), wall);
@@ -15,16 +30,46 @@ pub fn clock(clock: &impl Clock, mut advance: impl FnMut(u64), mut jump: impl Fn
     assert_eq!(clock.monotonic(), monotonic + 17);
 }
 
-pub fn rng(mut factory: impl FnMut() -> Box<dyn Rng>) -> Result<(), PortError> {
+/// Port contract: every `Rng` implementation, including the production one, passes this.
+pub fn rng_port(rng: &dyn Rng) -> Result<(), PortError> {
+    rng.fill(&mut [])?;
+    let mut a = [0; 32];
+    let mut b = [0; 32];
+    rng.fill(&mut a)?;
+    rng.fill(&mut b)?;
+    assert!(
+        a.iter().any(|byte| *byte != 0),
+        "output must not be all zeros"
+    );
+    assert!(
+        b.iter().any(|byte| *byte != 0),
+        "output must not be all zeros"
+    );
+    assert_ne!(a, b, "successive draws must differ");
+    let mut large = vec![0; 1 << 16];
+    rng.fill(&mut large)?;
+    assert!(
+        large.iter().any(|byte| *byte != 0),
+        "large fill must be filled"
+    );
+    assert!(
+        large
+            .rchunks(32)
+            .next()
+            .is_some_and(|tail| tail.iter().any(|byte| *byte != 0)),
+        "the whole buffer must be filled"
+    );
+    Ok(())
+}
+/// Determinism contract: fakes only. Two fresh instances with one seed produce one stream.
+pub fn rng_determinism(mut factory: impl FnMut() -> Box<dyn Rng>) -> Result<(), PortError> {
     let first = factory();
     let second = factory();
     let mut a = [0; 64];
     let mut b = [0; 64];
-    first.fill(&mut [])?;
     first.fill(&mut a)?;
     second.fill(&mut b)?;
     assert_eq!(a, b, "same seed must produce same bytes");
-    assert!(a.iter().any(|b| *b != 0));
     first.fill(&mut b)?;
     assert_ne!(a, b, "the stream must advance");
     Ok(())
@@ -44,6 +89,24 @@ pub async fn keys(store: &dyn KeyStore) -> Result<(), PortError> {
                 "private JWK member exported"
             );
         }
+        assert!(
+            !public.jwk.contains_key("kid"),
+            "core mints kid from Rng (KEY-4); the store returns key-material members only"
+        );
+        assert!(
+            public.jwk.values().all(|value| *value != public.handle.id),
+            "the key handle is secret class (DM-5) and must not appear in the JWK"
+        );
+        assert!(
+            !format!("{:?}", public.handle).contains(&public.handle.id),
+            "KeyHandle Debug must redact the id"
+        );
+        assert!(!format!("{public:?}").contains(&public.handle.id));
+        // A signing-key handle is not an HMAC key.
+        assert_eq!(
+            store.hmac(&public.handle, b"message").await.err(),
+            Some(PortError::AlgorithmMismatch)
+        );
         let signature = store.sign(&public.handle, algorithm, b"message").await?;
         assert!(!signature.expose().is_empty());
         assert_eq!(
@@ -87,7 +150,57 @@ pub async fn keys(store: &dyn KeyStore) -> Result<(), PortError> {
         // Public verification material remains available after private key erasure.
         assert_eq!(store.public_jwk(&public.handle).await?, public);
     }
-    let data = store.new_data_key("instance-a", "index").await?;
+    let data = store
+        .new_data_key("instance-a", DATA_KEY_PURPOSE_INDEX)
+        .await?;
+    assert!(!format!("{data:?}").contains(&data.handle.id));
+    // A data-key handle is not a signing key: sign and public_jwk fail with AlgorithmMismatch.
+    assert_eq!(
+        store
+            .sign(&data.handle, Algorithm::EdDsa, b"message")
+            .await
+            .err(),
+        Some(PortError::AlgorithmMismatch)
+    );
+    assert_eq!(
+        store.public_jwk(&data.handle).await.err(),
+        Some(PortError::AlgorithmMismatch)
+    );
+    // Destroying an unknown handle is KeyNotFound, for both key kinds.
+    let unknown = KeyHandle {
+        instance: "instance-a".into(),
+        id: "unknown".into(),
+    };
+    assert_eq!(
+        store.destroy(&unknown).await.err(),
+        Some(PortError::KeyNotFound)
+    );
+    assert_eq!(
+        store.destroy_data_key(&unknown).await.err(),
+        Some(PortError::KeyNotFound)
+    );
+    // Wrapped bytes the store did not issue (tampered, truncated, empty) never unwrap: the
+    // store answers KeyNotFound, or InvalidInput when it can authenticate its own envelope.
+    let mut tampered = data.wrapped.expose().to_vec();
+    if let Some(byte) = tampered.first_mut() {
+        *byte ^= 1;
+    }
+    let truncated = match data.wrapped.expose().split_last() {
+        Some((_, rest)) => rest.to_vec(),
+        None => vec![],
+    };
+    for bad in [tampered, truncated, vec![]] {
+        assert!(matches!(
+            store.unwrap_data_key(&SecretBytes::new(bad)).await.err(),
+            Some(PortError::KeyNotFound | PortError::InvalidInput)
+        ));
+    }
+    // HMAC keys are index-purpose data keys only.
+    let other = store.new_data_key("instance-a", "other").await?;
+    assert_eq!(
+        store.hmac(&other.handle, b"email-index").await.err(),
+        Some(PortError::AlgorithmMismatch)
+    );
     let plain = store.unwrap_data_key(&data.wrapped).await?;
     assert_eq!(plain.expose().len(), 32);
     assert_ne!(plain.expose(), data.wrapped.expose());
@@ -118,8 +231,13 @@ pub async fn keys(store: &dyn KeyStore) -> Result<(), PortError> {
     Ok(())
 }
 
-/// Fixture time starts at zero. `advance` changes the injected clock by the given nanoseconds.
-pub async fn cache(cache: &dyn Cache, mut advance: impl FnMut(u64)) -> Result<(), PortError> {
+/// `advance` moves the injected clock (both wall and monotonic) by the given nanoseconds; `jump`
+/// sets only the wall clock. Time-to-live is relative to the write, so no start time is assumed.
+pub async fn cache(
+    cache: &dyn Cache,
+    mut advance: impl FnMut(u64),
+    mut jump: impl FnMut(Timestamp),
+) -> Result<(), PortError> {
     let key = CacheKey {
         instance: "a".into(),
         namespace: "jwks".into(),
@@ -149,12 +267,25 @@ pub async fn cache(cache: &dyn Cache, mut advance: impl FnMut(u64)) -> Result<()
         cache.get(&key).await?.is_none(),
         "expiry boundary must be a miss"
     );
+    // Expiry follows monotonic time: an entry that expired unread stays expired after the wall
+    // clock jumps backwards.
     cache
-        .put(key.clone(), SecretBytes::new(vec![1]), 10)
+        .put(key.clone(), SecretBytes::new(vec![2]), 10)
         .await?;
+    advance(10);
+    jump(-1_000_000);
     assert!(
         cache.get(&key).await?.is_none(),
-        "expired writes must not resurrect data"
+        "a backwards wall-clock jump must not resurrect an expired entry"
+    );
+    // A zero time-to-live stores nothing and removes whatever was there.
+    cache
+        .put(key.clone(), SecretBytes::new(vec![3]), 100)
+        .await?;
+    cache.put(key.clone(), SecretBytes::new(vec![1]), 0).await?;
+    assert!(
+        cache.get(&key).await?.is_none(),
+        "an already-expired write must not store or resurrect data"
     );
     cache
         .put(key.clone(), SecretBytes::new(vec![1]), 100)
@@ -263,11 +394,37 @@ pub async fn authorizer(authorizer: &dyn Authorizer) -> Result<(), PortError> {
     );
     assert_eq!(
         authorizer
-            .batch_check(vec![yes.clone(), no, yes.clone()])
+            .batch_check(vec![yes.clone(), no.clone(), yes.clone()])
             .await?,
         vec![true, false, true]
     );
     assert!(authorizer.batch_check(vec![]).await?.is_empty());
+    // The session does not take part in authorization matching.
+    let mut with_session = yes.clone();
+    with_session.subject.session = Some(SessionId("session".into()));
+    assert!(
+        authorizer.check(with_session.clone()).await?,
+        "a session on the subject must not change a grant"
+    );
+    let mut denied_with_session = no.clone();
+    denied_with_session.subject.session = Some(SessionId("session".into()));
+    assert!(!authorizer.check(denied_with_session).await?);
+    assert_eq!(
+        authorizer
+            .list_objects("a", &with_session.subject, "read", "org")
+            .await?,
+        vec!["org:1", "org:2"]
+    );
+    // batch_check returns exactly one result per input, in order, matching `check`.
+    let mut batch = Vec::new();
+    let mut expected = Vec::new();
+    for index in 0..200 {
+        let permission = permission(&format!("org:{}", index % 4));
+        expected.push(authorizer.check(permission.clone()).await?);
+        batch.push(permission);
+    }
+    assert!(expected.contains(&true) && expected.contains(&false));
+    assert_eq!(authorizer.batch_check(batch).await?, expected);
     assert_eq!(
         authorizer
             .list_objects("a", &yes.subject, "read", "org")

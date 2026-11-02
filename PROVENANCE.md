@@ -10,7 +10,7 @@ This file records where every specification and decision came from, so the clean
 | 2026-10-21 | Spec-writer (Phase A) | Wrote `spec/00` to `spec/20`, the ADRs, the threat model and the milestone plan. Three sub-sessions of the same spec-writer wrote groups of spec files in parallel from a shared set of fixed decisions; all followed the same rules. |
 | 2026-10-21 | Owner | Reviewed Phase A and approved it with the controller's recommendations; all ADRs Accepted. The eleven decisions are in `docs/milestones.md`. They came from the owner, not from any outside source. |
 | 2026-10-25 | Implementer (Phase B) | Started in a fresh agent session working from `spec/`, `docs/adr/`, the standards and crate documentation only. M1.1 (workspace skeleton, determinism lint, `deny.toml`, CI) used spec 01, spec 19, ADR 0016, ADR 0022 and ADR 0023, the clippy, cargo-deny and cargo-audit documentation, and crates.io licence metadata for the ADR 0022 exception crates. No Zitadel material and no other identity-provider implementation was read. |
-| 2026-11-02 | Implementer (Phase B) | M1.2 (core ports and simulated implementations) used spec 01 §3 to §4, ADR 0016, ADR 0023 and the crate documentation for `rand_chacha`, `sha2`, `hmac` and `zeroize`. No Zitadel material was read. |
+| 2026-11-02 | Implementer (Phase B) | M1.2 (core ports and simulated implementations) used spec 01 §3 to §4, spec 03 DM-5 and DM-6, spec 06 §3 (KEY-4, KEY-8, KEY-10), spec 15 LOAMS-21, ADR 0009, ADR 0016, ADR 0018, ADR 0021, ADR 0022 (the `unicode-ident` amendment), ADR 0023, the crate documentation for `rand_chacha`, `sha2`, `hmac` and `zeroize`, and the crates.io licence metadata for `unicode-ident`. No Zitadel material was read. |
 
 ## Rules that applied
 

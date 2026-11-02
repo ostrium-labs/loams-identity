@@ -13,7 +13,7 @@ Some crates that are hard to avoid use other permissive licences (checked on cra
 
 | Licence | Crates | How they arrive |
 |---|---|---|
-| Unicode-3.0 | `icu_normalizer`, `icu_properties` and related ICU4X crates; `unicode-ident` (added 2026-11-02, same scoped Unicode-3.0 approval) | `url` → `idna` (every HTTP stack and URL parser); `unicode-ident` through `proc-macro2` in `thiserror`'s derive |
+| Unicode-3.0 | `icu_normalizer`, `icu_properties` and related ICU4X crates; `unicode-ident` (see the amendment below) | `url` → `idna` (every HTTP stack and URL parser); `unicode-ident` through `proc-macro2` in `thiserror`'s derive |
 | CDLA-Permissive-2.0 | `webpki-roots`, `webpki-root-certs` | rustls root certificates for outbound HTTPS |
 | Zlib | `foldhash` | A hasher used by some collection crates |
 
@@ -22,9 +22,11 @@ Some crates that are hard to avoid use other permissive licences (checked on cra
 - `deny.toml` allows: `Apache-2.0`, `Apache-2.0 WITH LLVM-exception`, `MIT`, `MIT-0`,
   `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `MPL-2.0`.
 - **Exceptions, scoped to named crates only (approved by the owner, 2026-10-21):** `Unicode-3.0`
-  (ICU4X crates, and `unicode-ident` added 2026-11-02, same scoped Unicode-3.0 approval),
-  `CDLA-Permissive-2.0` (`webpki-roots`, `webpki-root-certs`), `Zlib` (`foldhash`). These are permissive data or code licences without copyleft. In `deny.toml` they
+  (ICU4X crates), `CDLA-Permissive-2.0` (`webpki-roots`, `webpki-root-certs`), `Zlib`
+  (`foldhash`). These are permissive data or code licences without copyleft. In `deny.toml` they
   are `[[licenses.exceptions]]` entries naming each crate, not global allows.
+- **Amendment:** `unicode-ident` (Unicode-3.0) was added to the Unicode-3.0 exception 2026-11-02
+  by the Phase B coordinator under the owner's scoped Unicode-3.0 approval; owner to confirm.
 - Denied always: GPL, AGPL, LGPL, SSPL, BUSL, any licence with field-of-use limits, and
   unlicensed crates.
 - `cargo-deny` also checks advisories (RustSec), bans duplicate major versions with an exception
