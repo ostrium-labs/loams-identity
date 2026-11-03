@@ -10,3 +10,10 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+contract-tests = []
+
+[dependencies]
+thiserror = "2.0.21"
+zeroize = "1.9.1"

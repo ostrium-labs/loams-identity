@@ -7,3 +7,10 @@
 
 // Test code is exempt from the determinism lint (ADR 0016).
 #![cfg_attr(test, allow(clippy::disallowed_methods, clippy::disallowed_types))]
+
+mod basics;
+mod keys;
+mod services;
+pub use basics::*;
+pub use keys::*;
+pub use services::*;

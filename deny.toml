@@ -33,7 +33,9 @@ unused-allowed-license = "allow"
 
 # ADR 0022 scoped exceptions (owner, 2026-10-21). Each names the crates it covers; a new crate
 # under one of these licences needs its own entry here and a line in ADR 0022.
-# Unicode-3.0: the ICU4X crates, which arrive through url -> idna.
+# Unicode-3.0: the ICU4X crates, which arrive through url -> idna, and unicode-ident, which
+# arrives through proc-macro2 in thiserror's derive (added 2026-11-02 by the Phase B coordinator;
+# owner to confirm, see the ADR 0022 amendment).
 [[licenses.exceptions]]
 crate = "icu_collections"
 allow = ["Unicode-3.0"]
@@ -63,6 +65,9 @@ crate = "potential_utf"
 allow = ["Unicode-3.0"]
 [[licenses.exceptions]]
 crate = "tinystr"
+allow = ["Unicode-3.0"]
+[[licenses.exceptions]]
+crate = "unicode-ident"
 allow = ["Unicode-3.0"]
 [[licenses.exceptions]]
 crate = "writeable"
