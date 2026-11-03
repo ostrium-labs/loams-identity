@@ -338,3 +338,14 @@ fn shared_seeded_rng_is_deterministic() {
     assert_eq!(a.len(), 64);
     assert_eq!(a, b);
 }
+#[test]
+fn http_records_requests_beyond_the_script() {
+    let client = ScriptedHttpClient::new(SimClock::default());
+    client.push_step(step(0, 0, Ok(response(b"ok"))));
+    run(client.execute(http_request())).unwrap();
+    assert_eq!(
+        run(client.execute(http_request())).err(),
+        Some(PortError::UnexpectedOperation)
+    );
+    assert_eq!(client.requests().len(), 2);
+}

@@ -67,11 +67,17 @@ pub enum Algorithm {
     Rs256,
 }
 /// Opaque, instance-scoped key identity; never private material. Key handles are secret class
-/// (DM-5), so Debug redacts the id.
+/// (DM-5), so Debug redacts the id and the id is zeroized on drop (ARCH-14), the same rule as
+/// `SessionId`. Clones are independent copies and are each wiped when dropped.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyHandle {
     pub instance: String,
     pub id: String,
+}
+impl Drop for KeyHandle {
+    fn drop(&mut self) {
+        self.id.zeroize();
+    }
 }
 impl fmt::Debug for KeyHandle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

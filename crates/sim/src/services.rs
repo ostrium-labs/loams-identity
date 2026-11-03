@@ -24,14 +24,18 @@ impl HttpState {
         clock: &SimClock,
         request: HttpRequest,
     ) -> Result<HttpResponse, PortError> {
-        let Some(step) = self.script.pop_front() else {
-            return Err(PortError::UnexpectedOperation);
-        };
-        let matches = step.method == request.method && step.url.expose() == request.url.expose();
+        // Record before consulting the script so unexpected extra requests stay observable.
         let connect_limit = request.connect_timeout_ns;
         let total_limit = request.timeout_ns;
         let max_body = request.max_response_bytes;
+        let step = self.script.pop_front();
+        let matches = step.as_ref().is_some_and(|step| {
+            step.method == request.method && step.url.expose() == request.url.expose()
+        });
         self.requests.push(request);
+        let Some(step) = step else {
+            return Err(PortError::UnexpectedOperation);
+        };
         if !matches {
             return Err(PortError::UnexpectedOperation);
         }
