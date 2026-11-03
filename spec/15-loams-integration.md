@@ -16,6 +16,8 @@ This file owns the Loams private claim names (ADR 0017). Other spec files refer 
 | Resource-level authorization (`can_*` on projects, environments, databases) | No | Yes, OpenFGA behind `Authorizer` |
 | Resource tuples (project → org, environment → project) | No | Yes, control-plane outbox |
 | Loams' own short-lived tokens (environment-bound, vended to sandboxes) | No (owner decision, section 2.4) | Yes |
+| Install and device machine identities (Loams Access, section 8) | Yes, source of truth | Creates and removes them through the management API; writes their resource tuples and Meter subjects |
+| mTLS certificates for installs and devices (Loams design 83) | No: issues the access token the CA checks (LOAMS-30) | Yes, the CA service in the same home |
 
 **LOAMS-1.** loams-identity never writes OpenFGA tuples itself. It exports events; Loams'
 identity-sync service writes tuples. This keeps one writer per tuple family.
@@ -43,7 +45,7 @@ Header: `{"typ": "at+jwt", "alg": "EdDSA", "kid": "<key id>"}`.
 | `act` | object | When an actor is involved | [RFC 8693] section 4.1 chain; each level has `sub`, `principal`, and for agents `agent_owner` |
 | `may_act` | object | Tokens from an agent-bound application | [RFC 8693] section 4.4; names the agent allowed to act ([13](13-machine-identity.md) MACH-41) |
 | `org` | string | Always | The subject's org id |
-| `principal` | string | Always | `user`, `service_account` or `agent` |
+| `principal` | string | Always | `user`, `service_account`, `agent`, `install` or `device` (the last two from ADR 0028; LOAMS-27) |
 | `agent_owner` | string | When `principal` is `agent` | The owner's user id |
 | `agent_session` | string | When bound to an agent session | The agent session id ([13](13-machine-identity.md) MACH-39) |
 | `roles` | object | `[P4]`, when selected | [14](14-orgs-projects-roles.md) ORG-21 |
@@ -215,7 +217,10 @@ and reconciliation the backstop.
 ### 3.6 Event to tuple mapping
 
 Loams' OpenFGA types are `user`, `agent`, `service_account`, `team`, `org`, `project`,
-`environment` and the resource types below them (Loams design 76 section 6).
+`environment` and the resource types below them (Loams design 76 section 6), plus `install` and
+`device` for Loams Access (Loams design 86 D2633). The `owner`, `operator` and `viewer` tuples on
+an install or device are resource tuples that Loams Access writes itself (section 8); they are not
+mapped from identity events.
 
 | Event | Tuple action by identity-sync |
 |---|---|
@@ -224,11 +229,15 @@ Loams' OpenFGA types are `user`, `agent`, `service_account`, `team`, `org`, `pro
 | `org.member_removed` | Delete every `org:O#<role>@user:U` |
 | `user.created` (purpose `agent`) | Write `agent:A#owner@user:<owner>`; if the agent names a Loams project, write `agent:A#project@project:P` |
 | `user.created` (purpose `service_account`) | If it names a Loams project, write `service_account:S#project@project:P` |
+| `user.created` (purpose `install`) | Write `install:I#project@project:P` (always present, MACH-57) |
+| `user.created` (purpose `device`) | Write `device:D#project@project:P` (always present, MACH-57) |
 | `user.agent_owner_changed` | Replace `agent:A#owner@user:*` with the new owner |
 | `user.agent_settings_changed` (project changed) | Replace `agent:A#project@project:*` |
 | `user.deactivated`, `user.removed`, `user.erased` (human) | Delete all tuples whose user is `user:U` (read by user, delete in batches of at most 100) |
 | `user.deactivated`, `user.removed` (agent or service account) | Delete all tuples for `agent:A` or `service_account:S`; Loams also stops vending tokens for it |
-| `user.reactivated` | Re-read the user's memberships through the management API and write them |
+| `user.deactivated`, `user.removed` (install or device) | Delete all tuples for `install:I` or `device:D`, and deny-list its certificate identity (LOAMS-31); Loams Access also suspends or removes its Meter subject |
+| `user.reactivated` (human, agent or service account) | Re-read the user's memberships through the management API and write them |
+| `user.reactivated` (install or device) | Write `install:I#project@project:P` or `device:D#project@project:P` again from the event's `loams_project_ref`, and remove the certificate identity from the CA's deny list (LOAMS-31); Loams Access restores the resource tuples and the Meter subject (LOAMS-33) |
 | `org.deactivated`, `org.removed` | No blind deletion: Loams' control plane removes the org subtree, because it knows the resources |
 | `project.created` | Never mapped. Identity projects are not Loams projects; Loams' control plane writes project tuples itself (design 76 section 8.2; LOAMS-19) |
 | `agent_session.ended` | Delete any conditional tuples Loams wrote for that session |
@@ -265,6 +274,12 @@ Loams' authorizer (design 76 section 9.1) has `check`, `batch_check` and `list_o
 
 Because every delegated token carries `act`, Loams can enforce "never exceeds either party's
 rights" by checking the subject and each actor (MACH-34).
+
+**LOAMS-27.** `[P3]` Loams' `Subject` kind gains `Install` and `Device`, mapped from the
+`principal` values `install` and `device` (MACH-61). This is a change on the Loams side, recorded
+here so it is not missed: Loams' verifier MUST accept the two values before this service issues
+them, and a Loams component that does not expect an install or device MUST refuse the token
+rather than treat it as another kind. The values are additive within API version 1 (LOAMS-2).
 
 ### 4.2 This service's own use
 
@@ -334,28 +349,100 @@ with `types=*` for callers with `audit.read`. Iggy is a later sink.
 
 ## 7. Deployment with Loams
 
-**LOAMS-23.** Ostrium Labs hosts one instance at `auth.loams.dev` for the console and the site.
-Its OIDC endpoints and login UI are public. Its management and system APIs listen only on the
-private listener, reachable over the tailnet. Ostrium hosts nothing else (the console plus
-auth), and everything is Apache-2.0.
+**LOAMS-23.** Ostrium Labs hosts one instance at `auth.loams.dev` for loams.dev itself (for
+example, signing in to submit or star a marketplace listing). Its OIDC endpoints and login UI are
+public. Its management and system APIs listen only on the private listener, reachable over the
+tailnet. Everything is Apache-2.0. *Amended 2026-11-02 (ADR 0028, Loams design 86 D2630):* it no
+longer serves a hosted console for deployments, and no deployment depends on it.
 
-**LOAMS-24.** A self-hosted Loams install that trusts `auth.loams.dev` uses it only to sign
-people in (it is a relying party). It still decides membership and authorization itself, so
-Ostrium never sees the install's tuples or resources.
+**LOAMS-24.** Withdrawn 2026-11-02 (ADR 0028). It let a self-hosted install trust
+`auth.loams.dev` to sign people in; Loams design 86 D2630 puts identity in each home instead.
+See LOAMS-28.
 
 **LOAMS-25.** A self-hosted install that runs its own loams-identity uses the `identity` compose
 profile: one loams-identity container with redb in a volume (single node) or PostgreSQL, the
 private listener on the compose network only, and identity-sync running inside the `loams`
 process reading the pull feed (no inbound webhook port needed). The light default (no profile)
-keeps Loams' built-in single-org authentication.
+keeps Loams' built-in single-org authentication. This describes the compose path; in an operator
+home, this service is part of the platform base (LOAMS-28).
 
 **LOAMS-26.** Loams design 76 chose Zitadel and listed "a Rust-native IdP behind the same traits"
 as its optional Phase 6. This project is that IdP. *Owner decision, 2026-10-21:* Zitadel stays
 at `auth.loams.dev` until loams-identity passes the OpenID conformance plans of
 [19](19-verification.md) and an external security review after Phase 3; the switch is decided
-then. LOAMS-23 describes the hosted instance as it will be after such a switch. Loams depends only on the standards, on the
+then. LOAMS-23 describes the hosted instance as it will be after such a switch. *Extended
+2026-11-02 (ADR 0028, Loams design 86 D2632):* the same gate applies to homes. Until this
+service passes it, a home's identity part is Zitadel behind the same Loams port; moving a home to
+this service is a configuration change plus a data migration, which is not yet specified (ADR
+0028, Consequences). Loams depends only on the standards, on the
 claims in section 2 and on the event feed in section 3, so the identity provider can be swapped
 without changing Loams' authorization code.
+
+## 8. Loams Access `[P3]`
+
+Loams Access (Loams design 86 section 4.3) is this service, OpenFGA and the Loams Meter in every
+home's platform base, sharing one tenant tree, `org → project → {install, device, user, agent}`,
+and one id scheme. This section is what this service promises Loams Access, and the Loams-side
+rules that depend on it. The decisions are in ADR 0028.
+
+**LOAMS-28.** Each Loams home runs its own instance of this service (Loams design 86 D2630).
+Installs, devices, machine users and humans of that home are identities of that instance, and the
+device mTLS trust root (LOAMS-30) is in the same home. A home never depends on `auth.loams.dev`.
+Signing in with an account from elsewhere is federation `[P5]` ([16](16-federation.md)), configured
+by the home's own admins.
+
+**LOAMS-29.** One id scheme and one call. The id of an install or device is its machine user's id
+(the `sub` of its tokens); Loams uses the same id for its OpenFGA object (`install:<id>`,
+`device:<id>`) and its Meter subject. Loams Access creates a subject in this order: this service
+first (MACH-60, one call that also registers the first key, with `loams_resource_ref` set and an
+`Idempotency-Key`), then the tuples, then the Meter subject. A retry after a crash repeats the
+create, receives `409` with the existing id (MACH-58), and continues. Removal is
+`DELETE /users/{id}`, then Loams removes the tuples and the Meter subject (also driven by the sync
+events in section 3.6). Loams' nightly reconciliation (LOAMS-18) lists install and device machine
+users by `loams_resource_ref` and removes any that have no Loams record. Key rotation before
+`expires_at` (MACH-7) is Loams Access's job, through the management API.
+
+**LOAMS-30.** Device and install certificates. This service is not a certificate authority
+(MACH-63). The CA service of Loams design 83, in the same home, issues their mTLS certificates
+and is their trust root. The contract between the two:
+
+1. Loams registers the CA's enrolment endpoint as a `resource_server` application with its own
+   resource identifier (LOAMS-9).
+2. The device or install obtains an access token with the JWT bearer grant (MACH-12) signed with
+   its machine key, and `resource` set to the CA's identifier (LOAMS-8).
+3. The CA validates the token per LOAMS-4, requires `principal` to be `install` or `device`, and
+   takes the certificate's identity from `sub` (and `org`), never from the certificate signing
+   request alone. What that identity looks like in the certificate is Loams' choice (Loams design
+   83 section 6.1).
+
+This service promises that such a token is issued only while the machine user, its org and its
+instance are active, and only to a holder of an active, unexpired machine key of that user.
+
+**LOAMS-31.** Revocation reaches certificates (normative for Loams). On `user.deactivated` or
+`user.removed` for an install or device, Loams adds its certificate identity to the CA's deny list
+(Loams design 83 section 6.5); on `user.reactivated` it removes it. The CA MUST require a fresh
+access token (LOAMS-30) from the home's own instance of this service, for an active install or
+device, to renew that principal's certificate; the current certificate alone is not enough. This
+service's state is then checked at least once per certificate lifetime even if the sync feed lags,
+and a deactivated or removed install or device cannot renew (LOAMS-30's promise: no token for an
+inactive principal).
+
+**LOAMS-33.** Reactivation restores what deactivation took away (normative for Loams). For an
+install or device, `user.deactivated` and `user.reactivated` carry `purpose`, `loams_project_ref`
+and `loams_resource_ref` in `data`, so a consumer can act without earlier state. On deactivation
+Loams deletes the principal's tuples, adds it to the CA's deny list and suspends its Meter
+subject; on `user.reactivated`, identity-sync rewrites the project tuple (section 3.6), and Loams
+Access rewrites the `owner`, `operator` and `viewer` tuples as they were when the subject was
+created (from its own record, found by `loams_resource_ref` or the id) and resumes the Meter
+subject. On `user.removed` the deletions are final and the Meter subject is removed.
+Reactivating is the only way back; Loams never restores a removed principal.
+
+**LOAMS-32.** The Access audit stream. This service keeps its own event types
+(`dev.loams.identity.*`, LOAMS-10) and audit record shape (LOAMS-22). Loams Access builds its
+single `io.loams.dev.access.*` stream (Loams design 86 D2633) from this service's feed, OpenFGA
+changes and Meter events. Each record it derives from an event of this service keeps that event's
+CloudEvents `source` and `id`, so records can be deduplicated and traced back. The same mapping
+serves the interim identity provider (LOAMS-26), which is why it lives on the Loams side.
 
 ## Sources
 
@@ -368,6 +455,9 @@ without changing Loams' authorization code.
 - [OpenFGA docs], for the tuple and relation terms.
 - Loams design 76 sections 6, 8.1 (mapping and rules only), 9.1, 10 and 11, and design 19
   sections 5.2 to 5.4, as Loams-side contracts.
+- Loams design 86 sections 4.2, 4.3 and 7 and decisions D2617 to D2634, and design 83 sections 1,
+  2, 6 and 7.3, as Loams-side contracts for section 8, LOAMS-23, LOAMS-24, LOAMS-26 and LOAMS-27
+  (ADR 0028).
 
 [RFC 7519]: https://www.rfc-editor.org/rfc/rfc7519
 [RFC 8414]: https://www.rfc-editor.org/rfc/rfc8414

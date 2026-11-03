@@ -120,6 +120,7 @@ Maintained in the same transaction as the events (ES-1).
 | `spa_origins` | (instance, origin) | count of active `spa` clients with a redirect URI at that origin | No |
 | `pat_hashes` | (instance, PAT hash) | (user id, pat id) | Yes |
 | `machine_keys` | (instance, user id, key id) | user id | Yes |
+| `loams_resource_refs` `[P3]` | (instance, org, `loams_resource_ref`) | user id of an install or device | Yes (while the user is not removed; MACH-58) |
 | `passkey_credentials` | (instance, credential id) | user id | Yes |
 | `external_ids` `[P5]` | (instance, idp id, upstream subject) | user id | Yes |
 | `idp_states` `[P5]` | (instance, hash of the upstream `state`) | IdP intent id | Yes |
@@ -231,6 +232,8 @@ transaction.
 - Crate documentation: [redb] (single-writer serializable transactions), [sqlx].
 - PostgreSQL documentation on transaction isolation and sequences, for the reason sequences
   alone do not give commit-ordered positions.
+- Loams design 86 section 4.3 (one operator reconcile creates a subject), as a Loams-side
+  contract for the `loams_resource_refs` index (ADR 0028).
 
 [redb]: https://docs.rs/redb
 [sqlx]: https://docs.rs/sqlx

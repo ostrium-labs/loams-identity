@@ -30,6 +30,8 @@ the first production deployment at `auth.loams.dev`.
 | Instance operator (runs the process) | Full trust over the instance, but should not see plaintext secrets or personal data without leaving an audit trail. |
 | Relying party (client) | Only what its registration allows. A public client is untrusted code on a user's device. |
 | Machine client or agent | Only its own grants; agents are short-lived and possibly compromised (prompt injection). |
+| Install or device `[P3]` | Only its own grants. A device sits where an attacker can reach it physically, so its key may be extracted. |
+| Loams Access (the Loams control plane) | Manages install and device machine users of the orgs it administers, with `user.manage` ([15](../spec/15-loams-integration.md) section 8). |
 | Upstream identity provider `[P5]` | Trusted only for the identities it asserts, only for the orgs that configured it. |
 | Webhook or sync consumer | Receives exported events; not trusted with secrets. |
 | Supply-chain participant (crate authors, CI) | Code we run; trusted only after review and pinning. |
@@ -155,6 +157,11 @@ the first production deployment at `auth.loams.dev`.
 | E | An agent acting for a user beyond the user's consent | Delegation only from an explicit user grant to that agent or an org policy; `act` recorded; narrow-only ([13](../spec/13-machine-identity.md)) |
 | E | Workload-identity trust policy too broad (for example any repository) | Policies need issuer, audience and an exact or anchored subject pattern; wildcards limited to the last path segment ([13](../spec/13-machine-identity.md)) |
 | R | Agent actions not attributable | `principal`, `agent_owner`, `agent_session` and `act` claims; audit fields ([15](../spec/15-loams-integration.md)) |
+| S | A captured device's key is used from elsewhere | Machine keys only, no copyable secret (MACH-59, SEC-41); 15-minute tokens without refresh (MACH-61); deactivating the device stops tokens at once (MACH-54) and, through identity-sync, its certificate (LOAMS-31) |
+| S | A device credential is planted or swapped during setup | No enrolment endpoint or bearer enrolment token here (MACH-63); the device's public key is registered by a signed-in caller through the management API (MACH-60) after the setup app checks it against the QR code (Loams side) |
+| E | A device or install token used to get a certificate for another identity | The Loams CA takes the certificate identity from the token's `sub`, not from the request (LOAMS-30) |
+| E | Loams Access's broad `user.manage` misused to change human users | Private listener (SEC-36), every change audited with the actor; a narrower permission is a recorded follow-up (ADR 0028) |
+| T | A reconciler creates duplicate identities for one install | `loams_resource_ref` unique per org; a repeated create returns the existing id (MACH-58) |
 
 ### 4.11 Supply chain and build
 
@@ -199,6 +206,8 @@ Ranked by likelihood times impact for a public deployment such as `auth.loams.de
 - [NIST SP 800-63B]: Digital Identity Guidelines, Authentication.
 - Microsoft's STRIDE categories as a general method.
 - RustSec advisory [RUSTSEC-2023-0071] (RSA timing).
+- Loams design 86 sections 4.3 and 7 and design 83 section 6, for the install and device rows
+  (ADR 0028).
 
 [RFC 6819]: https://www.rfc-editor.org/rfc/rfc6819
 [RFC 9700]: https://www.rfc-editor.org/rfc/rfc9700

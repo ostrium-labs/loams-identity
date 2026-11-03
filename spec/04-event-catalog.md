@@ -99,7 +99,7 @@ audit sinks only; **none** stays inside.
 
 | Type | `data` | `personal` | Export | Phase |
 |---|---|---|---|---|
-| `user.created` | `kind`, `login_name_hmac`, `machine` (name, description, purpose, agent profile) | `login_name`, `human` profile | sync | 1 |
+| `user.created` | `kind`, `login_name_hmac` (`null` for installs and devices), `machine` (name, description, purpose, agent profile; `loams_project_ref` and `loams_resource_ref` for installs and devices `[P3]`) | `login_name`, `human` profile | sync | 1 |
 | `user.profile_changed` | | changed profile fields | audit | 1 |
 | `user.login_name_changed` | `login_name_hmac` | `login_name` | audit | 1 |
 | `user.email_changed` | `verified: false` | `email` | audit | 1 |
@@ -109,7 +109,7 @@ audit sinks only; **none** stays inside.
 | `user.password_reset_requested` | `code_hash`, `expires_at` | | audit | 1 |
 | `user.locked` | `factor` (`password`, `otp`, `all`), `until` (or `null` for admin unlock) | | audit | 1 |
 | `user.unlocked` | `factor`, `by` (`admin`, `expiry`, `reset`) | | audit | 1 |
-| `user.deactivated` / `user.reactivated` | `reason` | | sync | 1 |
+| `user.deactivated` / `user.reactivated` | `reason`; for an install or device `[P3]` also `purpose`, `loams_project_ref` and `loams_resource_ref` (LOAMS-33) | | sync | 1 |
 | `user.removed` | | | sync | 1 |
 | `user.erased` | `data_key_destroyed: true` | | sync | 1 |
 | `user.passkey_registered` | `credential_id`, `public_key`, `sign_count`, `backup_eligible`, `backup_state`, `transports`, `aaguid`, `name` | | audit | 2 |
@@ -120,7 +120,7 @@ audit sinks only; **none** stays inside.
 | `user.totp_step_used` | `step` | | none | 2 |
 | `user.recovery_codes_generated` | `hashes` (10) | | audit | 2 |
 | `user.recovery_code_used` | `index` | | audit | 2 |
-| `user.machine_key_added` | `key_id`, `public_jwk`, `alg`, `expires_at` | | audit | 3 |
+| `user.machine_key_added` | `key_id`, `public_jwk`, `alg`, `expires_at` (for an install or device, the first one is in the same batch as `user.created`, MACH-60) | | audit | 3 |
 | `user.machine_key_removed` | `key_id` | | audit | 3 |
 | `user.client_secret_added` | `secret_id`, `hash`, `expires_at` | | audit | 3 |
 | `user.client_secret_removed` | `secret_id` | | audit | 3 |
@@ -268,6 +268,8 @@ field so marked.
 - Our own design. The general pattern (event-sourced aggregates, projections, an outbox) is
   standard practice and is not taken from any one product.
 - [RFC 7386]: JSON Merge Patch (the `changes` payloads).
+- Loams design 86 section 4.3, as a Loams-side contract for the install and device fields of
+  `user.created` (ADR 0028).
 - Zitadel public docs, for the observable fact that a product of this kind records sign-ins,
   membership changes and token creation as events usable for audit, and that token exchange with
   an actor records an extra impersonation event ([Token exchange]). Event names and payloads are

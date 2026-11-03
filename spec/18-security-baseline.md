@@ -34,6 +34,7 @@ check or a client integration pass. The conflict is reported instead (owner's ru
 | SEC-16 | `iss` and `aud` are checked on every inbound token; a token from another instance or for another audience is rejected (TEN-15). | security: cross-tenant substitution |
 | SEC-17 | Signing keys rotate on a schedule and on demand; private keys never leave the `KeyStore`; `kid` values are random. | key rotation tests |
 | SEC-18 | Our JWTs carry an explicit `typ` (`at+jwt` for access tokens, [RFC 9068]; `logout+jwt` for logout tokens), and our verifiers check it, so an ID token cannot be used as an access token ([RFC 8725] section 3.11). | security: token substitution |
+| SEC-41 | Installs and devices authenticate only with private keys that they or the operator generated; no client secret, PAT or trust policy can be attached to them, whatever the org or instance settings say (MACH-59, ADR 0028). | property, security: machine credentials |
 
 ## 3. Secrets and data
 
@@ -95,6 +96,8 @@ check or a client integration pass. The conflict is reported instead (owner's ru
   [OWASP SSRF Prevention Cheat Sheet].
 - MDN documentation on cookie prefixes and `Sec-Fetch-Site` (general web platform facts).
 - The owner's mission prompt (2026-10-21), section "Security defaults".
+- Loams design 86 section 7 (devices sit where an attacker can reach them), for SEC-41 (ADR
+  0028).
 
 [RFC 6749]: https://www.rfc-editor.org/rfc/rfc6749
 [RFC 6750]: https://www.rfc-editor.org/rfc/rfc6750

@@ -1,6 +1,7 @@
 # 13. Machine identity `[P3]`
 
-This file covers principals that are not people: service accounts and agents. It specifies how
+This file covers principals that are not people: service accounts, agents, and the installs and
+devices of Loams Access (section 1.2). It specifies how
 they authenticate (private-key JWT, client secrets, personal access tokens), the device
 authorization grant for command-line tools, and token exchange for agent delegation, workload
 identity federation and token attenuation.
@@ -16,10 +17,12 @@ A machine user ([03](03-data-model.md) section 2.3) has `kind: machine` and a `p
 |---|---|---|---|
 | `service_account` | A non-human workload that is not an agent: a batch job, a CI pipeline, a backend | `service_account` | Machine keys, client secrets, PATs |
 | `agent` | An AI agent: a coding agent, an assistant, an MCP client acting for itself | `agent` | Machine keys, trust policies. No client secrets by default, never PATs |
+| `install` | One listing installed in a Loams home by the operator (Loams design 86 D2633) | `install` | Machine keys only (MACH-59) |
+| `device` | One laptop, instrument or sensor that runs `loams-node` (Loams design 86 section 7) | `device` | Machine keys only (MACH-59) |
 
-**MACH-1.** Every access token issued to a machine principal carries `principal` set to
-`service_account` or `agent` ([15](15-loams-integration.md) section 2). An agent's tokens also
-carry `agent_owner`.
+**MACH-1.** Every access token issued to a machine principal carries `principal` set to its
+purpose: `service_account`, `agent`, `install` or `device` ([15](15-loams-integration.md) section
+2). An agent's tokens also carry `agent_owner`. (`install` and `device` added by ADR 0028.)
 
 **MACH-2.** An agent can receive tokens only while it is `active` and has an active owner
 (DM-8). Every token-issuing batch read-checks the agent's user stream and, when present, the
@@ -47,6 +50,63 @@ device flow or refresh tokens.
 machine user. An admin cannot create a standalone `service` application, because every token
 must name a principal that Loams knows (`user`, `service_account` or `agent`), and a client on
 its own is none of these.
+
+### 1.2 Installs and devices (Loams Access)
+
+Loams Access (Loams design 86 section 4.3) gives every install and every device its own machine
+identity, in one tenant tree shared with OpenFGA and the Loams Meter:
+`org → project → {install, device, user, agent}`. Here the org is the identity org (TEN-6) and
+the project is the opaque `loams_project_ref` (LOAMS-19). Identity projects play no part
+(LOAMS-19a). The decisions are in ADR 0028.
+
+**MACH-57.** A machine user with purpose `install` or `device` MUST have a `loams_project_ref`,
+set by the creating event and never changed. No command changes it; moving a device to another
+Loams project means removing it and creating a new one. *Conservative choice:* the parent tuple
+that identity-sync writes for it ([15](15-loams-integration.md) section 3.6) then never needs
+replacing, and usage the Meter has recorded for it always belongs to one project.
+
+**MACH-58.** A machine user with purpose `install` or `device` MAY carry a `loams_resource_ref`:
+Loams' own name for it (for example the UID of the `LoamsInstall` or `LoamsDevice` resource), an
+opaque string of 1 to 200 printable ASCII characters, set at creation and never changed. It is
+unique per org among install and device machine users that are not removed (the
+`loams_resource_refs` index, [05](05-event-store-and-projections.md) section 4). A create whose
+reference is already taken fails with `409` and problem type `conflict`, and the problem details
+carry the existing user's id (API-27). The caller is already authorized in that org, so this
+reveals nothing outside it (TEN-17). Removing the user releases the reference. Like
+`loams_project_ref`, this service stores and exports it but does not validate it.
+
+**MACH-59.** Installs and devices hold machine keys only. Adding a client secret, a PAT or a
+trust policy to one fails with `400` (problem type `validation`), whatever the org's
+`allow_agent_client_secrets` setting or the instance's `pats` feature says. They authenticate
+with the JWT bearer grant (section 4) or with the client credentials grant using
+`private_key_jwt` (section 5). *Conservative choice:* a device sits where an attacker can touch
+it, so its only credential is a private key that the device generated and never sent anywhere
+(MACH-6), not a shared secret that can be copied off it or read from a setup channel.
+
+**MACH-60.** Creating an install or device takes its first public key in the same request
+(`initial_machine_key`, a public JWK with an optional `expires_at`, under the rules of MACH-7).
+`user.created` and `user.machine_key_added` are appended in one atomic batch, and the response
+returns the user id and the server-assigned key id (MACH-8). The request fails without a key, so
+an install or device is never active without a credential. Later keys are added and removed with
+the ordinary machine-key operations ([17](17-management-api.md) section 6.4); rotation before
+`expires_at` is the caller's job (Loams Access, LOAMS-29).
+
+**MACH-61.** A token for an install or device has `sub` set to the machine user's id, `principal`
+set to `install` or `device`, and `org`. It never carries `agent_owner` or `agent_session`, no
+refresh token is issued (MACH-14, MACH-19), and its lifetime is the token policy's
+`access_token_ttl`. An install or device cannot be the actor of a delegation (MACH-30 requires an
+agent) or its subject (MACH-30 requires a human); it may attenuate its own tokens (MACH-35).
+
+**MACH-62.** Installs and devices have no login name: the `login_names` index holds no entry for
+them, and their `name` need not be unique. They never use the authorization endpoint, the device
+flow or the login UI (MACH-5).
+
+**MACH-63.** This service issues no X.509 certificates for installs or devices and runs no
+enrolment endpoint for them. Their mTLS certificates come from the Loams CA service in the same
+home (Loams design 83 section 6), which authenticates them with an access token from this service
+([15](15-loams-integration.md) LOAMS-30). Their setup (QR code, BLE, the one-time join token of
+Loams design 86 D2619) happens on the Loams side, which registers the device's public key here
+through MACH-60.
 
 ## 2. Machine keys
 
@@ -468,6 +528,9 @@ Loams deletes the agent's or service account's tuples ([15](15-loams-integration
 - [OIDC Core]: OpenID Connect Core 1.0, sections 2 and 9.
 - Loams design 19 sections 5.1 to 5.5 and design 76 section 10 (agents, owners, TTL caps, the
   three token flows, no PATs for agents), as Loams-side contracts.
+- Loams design 86 sections 4.2, 4.3 and 7 (installs and devices in the Loams Access tenant tree,
+  device setup) and design 83 section 6 (the home's CA), as Loams-side contracts for section 1.2
+  (ADR 0028). The credential rules for installs and devices are first principles.
 - Zitadel public docs, observable behaviour only: service accounts authenticate with private-key
   JWT (recommended), client credentials or PATs; the JWT profile requires `iss` and `sub` to be
   the account and a `kid`, and caps the assertion's age; PATs are long-lived and limited to
