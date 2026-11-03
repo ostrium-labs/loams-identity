@@ -59,9 +59,12 @@ project.
    join token of design 86 D2619 (tailnet pre-auth key and CA join material) is created and checked
    on the Loams side.
 6. **Revocation reaches certificates through the existing sync feed.** Loams deny-lists the
-   certificate identity of a deactivated or removed install or device, and the CA asks for a fresh
-   token when it renews their certificates, so identity state is checked at least once per
-   certificate lifetime even if the feed lags (LOAMS-31).
+   certificate identity of a deactivated or removed install or device, and the CA MUST require a
+   fresh access token for an active principal when it renews their certificates, so identity
+   state is checked at least once per certificate lifetime even if the feed lags (LOAMS-31).
+   Reactivation restores the tuples, the Meter subject and the CA entry; the deactivation and
+   reactivation events carry the purpose and both references so Loams can do this without
+   earlier state (LOAMS-33).
 7. **The Access audit stream is built by Loams.** This service keeps `dev.loams.identity.*` and the
    LOAMS-22 record shape. Loams Access maps them into `io.loams.dev.access.*` (LOAMS-32).
 8. **Identity per home.** LOAMS-24 is withdrawn; LOAMS-23 is narrowed to loams.dev itself; LOAMS-28
@@ -108,23 +111,26 @@ The new work lands in Phase 3 (M3.1a and M3.9a), so Phases 1 and 2 stay as plann
 - **Loams-side changes** (recorded in 15 so they are not missed): the `Subject` kind gains
   `Install` and `Device`, and Loams' verifier must accept the new `principal` values before this
   service issues them (LOAMS-27); the CA gets a device and install issue path that checks a token
-  (LOAMS-30); identity-sync feeds the CA's deny list (LOAMS-31); Loams Access orders the three
-  creates and cleans up orphans (LOAMS-29).
+  (LOAMS-30) and requires a fresh token at renewal (LOAMS-31); identity-sync feeds the CA's deny
+  list (LOAMS-31); Loams Access orders the three creates, cleans up orphans (LOAMS-29) and
+  restores tuples and the Meter subject on reactivation (LOAMS-33).
 - **Key rotation.** MACH-7 caps a machine key at one year (default 90 days). Loams Access rotates
   install and device keys through the management API before they expire. A device should use a
   rotatable key for its machine identity, separate from any fixed key whose fingerprint is printed
   on its QR code.
 - **Permission breadth.** Loams Access needs `user.manage` in each org it manages, which also
-  covers human users. A narrower permission for install and device machine users is not added now;
-  revisit if a home needs to separate the two.
+  covers human users. *Decided by the coordinator, 2026-11-02:* accepted for Phase 3; a narrower
+  permission for install and device machine users is parked.
 - **Certificate revocation latency** is the sync feed's delivery time, bounded by the 24-hour leaf
   lifetime and the token check at renewal.
-- **Open: data migration from the interim identity provider.** Design 86 D2632 says moving a home
-  from Zitadel to this service is a configuration change plus a data migration. OpenFGA tuples and
+- **Data migration from the interim identity provider.** Design 86 D2632 says moving a home from
+  Zitadel to this service is a configuration change plus a data migration. OpenFGA tuples and
   Meter subjects are keyed by subject ids, so either the ids survive the move or Loams re-keys.
-  That needs its own ADR before any home switches; this ADR does not decide it.
+  *Decided by the coordinator, 2026-11-02:* deferred to its own ADR, which must be accepted before
+  any home switches. This ADR does not decide it.
 - **Naming.** Design 86 names the Access stream `io.loams.dev.access.*`; this service's feed uses
-  `dev.loams.identity.*` (LOAMS-10). Both work; the coordinator may want one prefix.
+  `dev.loams.identity.*` (LOAMS-10). *Decided by the coordinator, 2026-11-02:* keep both
+  namespaces.
 - Owner decision 10, LOAMS-6a and LOAMS-19a are unchanged.
 
 ## Derived from

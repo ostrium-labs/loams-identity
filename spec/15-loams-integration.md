@@ -236,7 +236,8 @@ mapped from identity events.
 | `user.deactivated`, `user.removed`, `user.erased` (human) | Delete all tuples whose user is `user:U` (read by user, delete in batches of at most 100) |
 | `user.deactivated`, `user.removed` (agent or service account) | Delete all tuples for `agent:A` or `service_account:S`; Loams also stops vending tokens for it |
 | `user.deactivated`, `user.removed` (install or device) | Delete all tuples for `install:I` or `device:D`, and deny-list its certificate identity (LOAMS-31); Loams Access also suspends or removes its Meter subject |
-| `user.reactivated` | Re-read the user's memberships through the management API and write them |
+| `user.reactivated` (human, agent or service account) | Re-read the user's memberships through the management API and write them |
+| `user.reactivated` (install or device) | Write `install:I#project@project:P` or `device:D#project@project:P` again from the event's `loams_project_ref`, and remove the certificate identity from the CA's deny list (LOAMS-31); Loams Access restores the resource tuples and the Meter subject (LOAMS-33) |
 | `org.deactivated`, `org.removed` | No blind deletion: Loams' control plane removes the org subtree, because it knows the resources |
 | `project.created` | Never mapped. Identity projects are not Loams projects; Loams' control plane writes project tuples itself (design 76 section 8.2; LOAMS-19) |
 | `agent_session.ended` | Delete any conditional tuples Loams wrote for that session |
@@ -419,10 +420,22 @@ instance are active, and only to a holder of an active, unexpired machine key of
 
 **LOAMS-31.** Revocation reaches certificates (normative for Loams). On `user.deactivated` or
 `user.removed` for an install or device, Loams adds its certificate identity to the CA's deny list
-(Loams design 83 section 6.5); on `user.reactivated` it removes it. The CA SHOULD require a fresh
-access token (LOAMS-30) to renew an install's or device's certificate, not the current
-certificate alone, so this service's state is checked at least once per certificate lifetime even
-if the sync feed lags.
+(Loams design 83 section 6.5); on `user.reactivated` it removes it. The CA MUST require a fresh
+access token (LOAMS-30) from the home's own instance of this service, for an active install or
+device, to renew that principal's certificate; the current certificate alone is not enough. This
+service's state is then checked at least once per certificate lifetime even if the sync feed lags,
+and a deactivated or removed install or device cannot renew (LOAMS-30's promise: no token for an
+inactive principal).
+
+**LOAMS-33.** Reactivation restores what deactivation took away (normative for Loams). For an
+install or device, `user.deactivated` and `user.reactivated` carry `purpose`, `loams_project_ref`
+and `loams_resource_ref` in `data`, so a consumer can act without earlier state. On deactivation
+Loams deletes the principal's tuples, adds it to the CA's deny list and suspends its Meter
+subject; on `user.reactivated`, identity-sync rewrites the project tuple (section 3.6), and Loams
+Access rewrites the `owner`, `operator` and `viewer` tuples as they were when the subject was
+created (from its own record, found by `loams_resource_ref` or the id) and resumes the Meter
+subject. On `user.removed` the deletions are final and the Meter subject is removed.
+Reactivating is the only way back; Loams never restores a removed principal.
 
 **LOAMS-32.** The Access audit stream. This service keeps its own event types
 (`dev.loams.identity.*`, LOAMS-10) and audit record shape (LOAMS-22). Loams Access builds its

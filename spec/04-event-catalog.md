@@ -109,7 +109,7 @@ audit sinks only; **none** stays inside.
 | `user.password_reset_requested` | `code_hash`, `expires_at` | | audit | 1 |
 | `user.locked` | `factor` (`password`, `otp`, `all`), `until` (or `null` for admin unlock) | | audit | 1 |
 | `user.unlocked` | `factor`, `by` (`admin`, `expiry`, `reset`) | | audit | 1 |
-| `user.deactivated` / `user.reactivated` | `reason` | | sync | 1 |
+| `user.deactivated` / `user.reactivated` | `reason`; for an install or device `[P3]` also `purpose`, `loams_project_ref` and `loams_resource_ref` (LOAMS-33) | | sync | 1 |
 | `user.removed` | | | sync | 1 |
 | `user.erased` | `data_key_destroyed: true` | | sync | 1 |
 | `user.passkey_registered` | `credential_id`, `public_key`, `sign_count`, `backup_eligible`, `backup_state`, `transports`, `aaguid`, `name` | | audit | 2 |

@@ -154,7 +154,7 @@ Loams-side contracts. No Zitadel material was used.
 | `spec/05-event-store-and-projections.md` | Loams design 86 §4.3 (`loams_resource_refs` index) |
 | `spec/08-tokens.md` | Loams design 86 §4.3 (`principal` values) |
 | `spec/13-machine-identity.md` | Loams design 86 §§4.2, 4.3, 7 and design 83 §6 (section 1.2, MACH-57 to MACH-63); RFC 7523, 7638; first principles |
-| `spec/15-loams-integration.md` | Loams design 86 §§4.2, 4.3, 7, D2617 to D2634, and design 83 §§1, 2, 6, 7.3 (section 8, LOAMS-23, LOAMS-24, LOAMS-26 to LOAMS-32); RFC 8707, 9068; CloudEvents 1.0 |
+| `spec/15-loams-integration.md` | Loams design 86 §§4.2, 4.3, 7, D2617 to D2634, and design 83 §§1, 2, 6, 7.3 (section 8, LOAMS-23, LOAMS-24, LOAMS-26 to LOAMS-33); RFC 8707, 9068; CloudEvents 1.0 |
 | `spec/17-management-api.md` | Loams design 86 §4.3 (API-27) |
 | `spec/18-security-baseline.md` | Loams design 86 §7 (SEC-41) |
 | `docs/threat-model.md` | Loams design 86 §§4.3, 7 and design 83 §6 (install and device rows) |
