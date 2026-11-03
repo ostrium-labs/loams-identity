@@ -196,7 +196,7 @@ Paths are under `/api/v1` unless they start with `/system/v1`. The permission co
 | Method and path | Permission | Phase |
 |---|---|---|
 | `POST /orgs/{org_id}/users` (human), `GET /orgs/{org_id}/users` | `user.manage`, `user.read` | 1 |
-| `POST /orgs/{org_id}/machine-users` | `user.manage` | 3 |
+| `POST /orgs/{org_id}/machine-users` (installs and devices: API-27) | `user.manage` | 3 |
 | `GET /users/{id}`, `PATCH /users/{id}`, `DELETE /users/{id}` | `user.read`, `user.manage` | 1 |
 | `POST /users/{id}/deactivate`, `.../reactivate`, `.../unlock`, `.../erase` | `user.manage` | 1 |
 | `POST /users/{id}/password-reset` (sends the reset email; never returns a password) | `user.manage` | 1 |
@@ -210,6 +210,17 @@ Paths are under `/api/v1` unless they start with `/system/v1`. The permission co
 | `PUT /users/{id}/agent/trust-policies/{policy_id}`, `DELETE` | `user.manage` | 3 |
 | `GET /users/{id}/grants`, `DELETE /grants/{grant_id}` | `user.read`, `user.manage` | 1 |
 | `GET /users/{id}/sessions`, `DELETE /sessions/{session_id}` | `user.read`, `user.manage` | 1 |
+
+**API-27.** `[P3]` Creating an install or device (ADR 0028). The body of
+`POST /orgs/{org_id}/machine-users` with `purpose` `install` or `device` carries `name`, an
+optional `description`, `loams_project_ref` (required), `loams_resource_ref` (optional) and
+`initial_machine_key` (required: `{ "public_jwk", "expires_at" }`), and is validated by
+[13](13-machine-identity.md) MACH-57 to MACH-60. The `201` response carries the user and the
+server-assigned `key_id`. A taken `loams_resource_ref` answers `409` with problem type `conflict`
+and the existing user's id in the field `existing_id`. `GET /orgs/{org_id}/users` accepts the
+filters `kind`, `purpose`, `loams_project_ref` and `loams_resource_ref`, so a reconciler can find
+what it created. Removal is `DELETE /users/{id}`; deactivation and reactivation use the existing
+user routes.
 
 **API-19.** Admins can never read or set a user's password, see a TOTP secret or a recovery code,
 or download a private key. They can only trigger resets, remove credentials and revoke.
@@ -336,6 +347,8 @@ operations in section 6 rather than adding new behaviour.
 - Crate documentation: [utoipa], [tonic], [axum].
 - Our own design for paths, permissions, the system API and the CLI. Loams design 76 section 12.3
   (management APIs never public on the hosted instance), as a Loams-side contract.
+- Loams design 86 section 4.3 (one API call or reconcile creates a subject), as a Loams-side
+  contract for API-27 (ADR 0028).
 
 [RFC 6750]: https://www.rfc-editor.org/rfc/rfc6750
 [RFC 7386]: https://www.rfc-editor.org/rfc/rfc7386

@@ -35,5 +35,6 @@ decisions recorded in [../milestones.md](../milestones.md) and in ADRs 0007, 001
 | [0025](0025-no-session-management-iframe.md) | No OIDC Session Management iframe and no front-channel logout |
 | [0026](0026-message-catalogues.md) | Login UI message catalogues in Project Fluent |
 | [0027](0027-common-password-blocklist.md) | A bundled common-password blocklist, licence checked before adding |
+| [0028](0028-loams-access-installs-devices-and-device-trust.md) | Loams Access: install and device principals; no CA or enrolment endpoint here; the home's design-83 CA checks our tokens (accepted 2026-11-02) |
 
 Template: [template.md](template.md).

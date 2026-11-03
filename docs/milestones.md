@@ -59,6 +59,7 @@ The implementer works from `spec/` and the cited standards only (ADR 0001).
 | # | Milestone | Specs | Done when |
 |---|---|---|---|
 | M3.1 | Machine users (service accounts, agents with owner and TTL cap), machine keys, client secrets | 03, 13 | Agent without an active owner gets no token (DM-8) |
+| M3.1a | Install and device machine users (ADR 0028): purposes `install` and `device`, required and fixed `loams_project_ref`, the `loams_resource_refs` index, creation with the first machine key in one batch, machine-keys-only rule, list filters | 03 DM-20, 04, 05 §4, 13 §1.2 (MACH-57 to MACH-62), 17 API-27, 18 SEC-41 | Property test DM-I8; a repeated create with the same `loams_resource_ref` answers `409` with the existing id; adding a secret, PAT or trust policy to a device fails; the cross-tenant suite covers the new index and filters |
 | M3.2 | `private_key_jwt` client authentication and the JWT bearer grant, with the `jti` replay cache | 07, 13, 06 | Assertion replay and audience tests |
 | M3.3 | Client credentials grant | 13 | Tokens carry `principal` and no user claims |
 | M3.4 | Personal access tokens (feature flag, never for agents) | 13 | Expiry required; refused for agents |
@@ -68,6 +69,7 @@ The implementer works from `spec/` and the cited standards only (ADR 0001).
 | M3.8 | Workload-identity federation (trust policies) and token vending for sandboxes | 13 | Trust-policy matching tests; SSRF tests for issuer JWKS |
 | M3.8a | Client ID Metadata Documents for MCP clients (owner decision 9) | 20 §4 | Metadata fetch passes the SSRF rules (SEC-34) |
 | M3.9 | identity-sync events for agents and service accounts; Loams `Authorizer` adapter tests | 15 | Agent deactivation reaches the sync consumer model within one simulated delivery cycle |
+| M3.9a | Loams Access contract for installs and devices (ADR 0028): `principal` values `install` and `device`, sync rows and the consumer model's deny-set and CA deny-list rules, a CA token fixture (JWT bearer grant with `resource` set to a CA resource server) | 08, 13 MACH-61 and MACH-63, 15 LOAMS-27 to LOAMS-32 | A device's token passes LOAMS-4 and maps to Subject kind `Device`; device removal reaches the simulated consumer's deny set and CA deny list within one delivery cycle; no token is issued for a deactivated device |
 | M3.10 | Phase 3 TLA+ extension (exchanged families, agent sessions), conformance re-run, benchmarks, security review | 18, 19 | Results updated |
 
 ## Later phases (not planned in detail)
@@ -97,6 +99,12 @@ the files named.
 | 9 | Client ID Metadata Documents | Pulled into Phase 3 (M3.8a). | 20 §4, this plan |
 | 10 | Identity projects and Loams projects | One identity project, `loams`, per instance, for Loams' applications and coarse role claims. Loams projects stay in the control plane and OpenFGA; identity projects and role assignments are never mapped to tuples. | 15 LOAMS-19a and the tuple table, 14 §3, 03 |
 | 11 | SAML | Deferred until a customer asks. | ADR 0011 |
+
+## Owner decisions (2026-11-02)
+
+| # | Question | Decision | Recorded in |
+|---|---|---|---|
+| 12 | Loams Access (Loams design 86 §4.2, §4.3, §7; design 83 §6) | Installs and devices are machine users bound to one Loams project, with machine keys only. Each home runs its own instance; `auth.loams.dev` serves loams.dev only (LOAMS-24 withdrawn). This service runs no CA and no enrolment endpoint; the home's design-83 CA checks our access tokens. Decision 10, LOAMS-6a and LOAMS-19a are unchanged. Accepted by the coordinator on the owner's "approve all". | ADR 0028; 13 §1.2; 15 §8; M3.1a and M3.9a |
 
 All ADRs are Accepted. Any later change to these decisions needs a new ADR or an amendment that
 names the date and the owner's approval.

@@ -11,6 +11,7 @@ This file records where every specification and decision came from, so the clean
 | 2026-10-21 | Owner | Reviewed Phase A and approved it with the controller's recommendations; all ADRs Accepted. The eleven decisions are in `docs/milestones.md`. They came from the owner, not from any outside source. |
 | 2026-10-25 | Implementer (Phase B) | Started in a fresh agent session working from `spec/`, `docs/adr/`, the standards and crate documentation only. M1.1 (workspace skeleton, determinism lint, `deny.toml`, CI) used spec 01, spec 19, ADR 0016, ADR 0022 and ADR 0023, the clippy, cargo-deny and cargo-audit documentation, and crates.io licence metadata for the ADR 0022 exception crates. No Zitadel material and no other identity-provider implementation was read. |
 | 2026-11-02 | Implementer (Phase B) | M1.2 (core ports and simulated implementations) used spec 01 §3 to §4, spec 03 DM-5 and DM-6, spec 06 §3 (KEY-4, KEY-8, KEY-10), spec 15 LOAMS-21, ADR 0009, ADR 0016, ADR 0018, ADR 0021, ADR 0022 (the `unicode-ident` amendment), ADR 0023, the crate documentation for `rand_chacha`, `sha2`, `hmac` and `zeroize`, and the crates.io licence metadata for `unicode-ident`. No Zitadel material was read. |
+| 2026-11-02 | Spec-writer (Loams Access change) | Wrote ADR 0028 and edited `spec/00`, `03`, `04`, `05`, `08`, `13`, `15`, `17`, `18`, `docs/threat-model.md`, `docs/milestones.md` and `docs/adr/README.md` for installs, devices and the device trust bootstrap. Worked from this repository's `spec/`, ADRs, threat model, milestone plan and this file, the two Loams documents listed under "Loams-side material read (ADR 0028)", and public standards (RFC 7523, 7638, 8705, 8707, 9068; CloudEvents 1.0). No Zitadel source, documentation or website was opened, and none of the forbidden IA0 material. The coordinator accepted the change on the owner's "approve all" (2026-11-02). |
 
 ## Rules that applied
 
@@ -45,6 +46,22 @@ open `docs/plans/ia0-spike-report.md`, anything under `conformance/identity/` or
 (`loams-wt/ia0*`). The controller reported that the author of those files had read Zitadel
 source, so they are treated as forbidden material. Nothing in this repository was derived from
 them.
+
+### Loams-side material read (ADR 0028)
+
+For the Loams Access change of 2026-11-02 the spec-writer read only these parts of the Loams
+monorepo, from the worktree of the design-86 branch (`loams-wt/d86-open-platform`). No other file
+of the Loams repository was opened.
+
+| Document | Sections read | Used for |
+|---|---|---|
+| `docs/design/86-open-platform-operator-v2.md` | 4.2 (identity in each home, D2630; the Postgres bullet was on screen but not used), 4.3 (Loams Access, D2632 to D2634), 7 (laptops, instruments and sensors, D2617 to D2622, D2628, D2629), and the decision rows D2617 to D2634 of section 9. The heading list and the decision rows D2610 to D2616 and D2623 to D2627 were seen in a search listing | Install and device principals, the tenant tree, one-call creation, device setup, the trust root in the home, the audit stream, `auth.loams.dev` scope |
+| `docs/design/83-cluster-transport-http3-mtls.md` | 1 (summary and the decision rows D2305 to D2329 on identity, CA, join, revocation and rotation), 2 (scope), 6.1 to 6.7 (SPIFFE-style IDs, the CA, the CA service, bootstrap and join, revocation, rotation, external CAs), 7.3 (peer identity versus principal) and question Q1479. Search hits on other lines mentioning certificates or identity (the hop inventory of section 4 and section 9) were seen but not used | Where certificates come from, the deny list, why this service runs no CA |
+
+**Note on these documents.** Design 86 D2619 says the device certificate is "bound to a Zitadel
+machine identity", and D2632 says official Zitadel runs behind the same Loams port until this
+service passes conformance. These are statements about Loams' own architecture, not about
+Zitadel's behaviour or internals; nothing about Zitadel itself was taken from them.
 
 ## Zitadel documentation pages consulted (observable behaviour only)
 
@@ -122,10 +139,31 @@ them.
 | 0025 | OIDC Session Management, Front-Channel, Back-Channel and RP-Initiated Logout specifications; public browser documentation on third-party cookies |
 | 0026 | Project Fluent docs; crates.io metadata |
 | 0027 | NIST SP 800-63B; the bundled list's own source and licence, to be recorded when added |
+| 0028 | Loams design 86 §§4.2, 4.3, 7 and D2617 to D2634; Loams design 83 §§1, 2, 6, 7.3; RFC 7523, 7638, 8705, 8707, 9068; CloudEvents 1.0; first principles |
+
+### Sources added by ADR 0028 (2026-11-02)
+
+Each file below also cites, in its own Sources section, the Loams documents of ADR 0028 as
+Loams-side contracts. No Zitadel material was used.
+
+| File | Sources added |
+|---|---|
+| `spec/00-index.md` | Loams design 86 §§4.2, 4.3, 7 (glossary) |
+| `spec/03-data-model.md` | Loams design 86 §4.3 (install and device profile, DM-20, DM-I8) |
+| `spec/04-event-catalog.md` | Loams design 86 §4.3 (`user.created` fields) |
+| `spec/05-event-store-and-projections.md` | Loams design 86 §4.3 (`loams_resource_refs` index) |
+| `spec/08-tokens.md` | Loams design 86 §4.3 (`principal` values) |
+| `spec/13-machine-identity.md` | Loams design 86 §§4.2, 4.3, 7 and design 83 §6 (section 1.2, MACH-57 to MACH-63); RFC 7523, 7638; first principles |
+| `spec/15-loams-integration.md` | Loams design 86 §§4.2, 4.3, 7, D2617 to D2634, and design 83 §§1, 2, 6, 7.3 (section 8, LOAMS-23, LOAMS-24, LOAMS-26 to LOAMS-32); RFC 8707, 9068; CloudEvents 1.0 |
+| `spec/17-management-api.md` | Loams design 86 §4.3 (API-27) |
+| `spec/18-security-baseline.md` | Loams design 86 §7 (SEC-41) |
+| `docs/threat-model.md` | Loams design 86 §§4.3, 7 and design 83 §6 (install and device rows) |
+| `docs/milestones.md` | ADR 0028 (M3.1a, M3.9a, owner decision 12) |
 
 ## Uncertainty log
 
 | Date | Item | Resolution |
 |---|---|---|
 | 2026-10-21 | Design 76 §8.1 and §9.2 mention Zitadel-specific facts (see the note above). | Not used. The sync transport and claim names in `spec/` are our own and differ. |
+| 2026-11-02 | Design 86 D2632 says moving a home from the interim identity provider to this service needs a data migration. | Not specified. ADR 0028 records it as open: subject ids must survive the move or Loams must re-key tuples and Meter subjects. |
 | 2026-10-21 | The idea that an org has a primary domain used for login-name suffixes appears both in Zitadel's public docs and in general multi-tenant practice. | Kept as observable behaviour, cited in `spec/02`. The verification, routing and default-org rules are our own. |

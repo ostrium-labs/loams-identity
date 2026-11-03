@@ -88,7 +88,7 @@ One aggregate for humans and machines; `kind` decides which parts are present.
 | `state` | `initial` \| `active` \| `locked` \| `deactivated` \| `removed` | Section 4.1 |
 | `login_name` | string, personal | Unique per instance after normalization (NFC, lower case, trimmed) |
 | `human` | HumanProfile, optional | `given_name`, `family_name`, `display_name`, `locale`, `email {address, verified}`, `phone {number, verified}` `[P2]` |
-| `machine` | MachineProfile, optional | `name`, `description`, `purpose: service_account \| agent`, `agent: AgentProfile` when purpose is agent |
+| `machine` | MachineProfile, optional | `name`, `description`, `purpose: service_account \| agent \| install \| device`, `agent: AgentProfile` when purpose is agent, `loams_project_ref` and `loams_resource_ref` when purpose is install or device |
 | `credentials` | Credentials | Section 2.3.1 |
 | `lockout` | `{ password_failures, otp_failures, locked_until }` | Counters reset on success |
 | `metadata` | map string → bytes `[P4]` | At most 64 entries, values at most 4 KiB |
@@ -100,6 +100,15 @@ AgentProfile (`[P3]`): `owner_user_id` (a human user in the same org, accountabl
 validated here; [15](15-loams-integration.md) LOAMS-19), `token_ttl_cap` (default 15m, at most 1h), `trust_policies` (list of workload-identity rules,
 [13](13-machine-identity.md) section 8), `status` is the user's `state`. Service accounts also
 carry an optional `loams_project_ref`.
+
+Install and device profile (`[P3]`, ADR 0028): `loams_project_ref` (required, never changes;
+[13](13-machine-identity.md) MACH-57) and `loams_resource_ref` (optional, unique per org while not
+removed, never changes; MACH-58). They have no login name (MACH-62) and only machine keys as
+credentials (MACH-59).
+
+**DM-20.** `[P3]` A machine user with purpose `install` or `device` always has a
+`loams_project_ref`, never has a password, passkey, client secret, PAT or trust policy, and is
+created together with its first machine key (MACH-60).
 
 **DM-8.** An agent's owner must be an active human user of the same org. Deactivating or
 removing the owner does not deactivate the agent automatically; it emits
@@ -368,6 +377,7 @@ See [06](06-keys-and-jose.md) section 2.
 | DM-I5 | Every aggregate's `instance_id` and `org_id` never change. |
 | DM-I6 | No read in org scope returns a record of another org. |
 | DM-I7 | An active org has at least one owner. |
+| DM-I8 | An install or device machine user's `loams_project_ref` and `loams_resource_ref` never change, and it never holds a credential other than machine keys (DM-20). |
 
 ## Sources
 
@@ -382,6 +392,8 @@ See [06](06-keys-and-jose.md) section 2.
 - [RFC 9562], UUIDv7.
 - Loams design 19 sections 5.1 and 5.3 (agent owner, TTL cap, principal kinds) and design 76
   section 10 (agents as machine users), as Loams-side contracts.
+- Loams design 86 section 4.3 (installs and devices in the Loams Access tenant tree), as a
+  Loams-side contract for the install and device profile (ADR 0028).
 - Zitadel public docs, observable behaviour only: users are human or machine and belong to one
   org for life; machine users have a name and description and authenticate with keys, client
   secrets or PATs; projects hold roles with a key, display name and group; project settings can

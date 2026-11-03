@@ -27,7 +27,7 @@ in these files and in the standards they cite.
 | [10-sessions-and-logout.md](10-sessions-and-logout.md) | Browser sessions, RP-initiated logout, back-channel logout | 1 (logout in 2) |
 | [11-login-and-passwords.md](11-login-and-passwords.md) | Login UI, passwords, lockout, rate limits, CSRF, cookies, setup | 1 |
 | [12-passkeys-and-mfa.md](12-passkeys-and-mfa.md) | WebAuthn passkeys, TOTP, email OTP, recovery codes, step-up | 2 |
-| [13-machine-identity.md](13-machine-identity.md) | Machine users, private_key_jwt, client credentials, PATs, device flow, token exchange | 3 |
+| [13-machine-identity.md](13-machine-identity.md) | Machine users, installs and devices, private_key_jwt, client credentials, PATs, device flow, token exchange | 3 |
 | [14-orgs-projects-roles.md](14-orgs-projects-roles.md) | Projects, applications, roles, grants, role claims | 4 |
 | [15-loams-integration.md](15-loams-integration.md) | Token contract with Loams, identity-sync events, OpenFGA mapping, audit | 1 to 4 |
 | [16-federation.md](16-federation.md) | Upstream OIDC identity providers, linking, JIT provisioning | 5 |
@@ -95,6 +95,10 @@ The threat model is [../docs/threat-model.md](../docs/threat-model.md), the deci
 | Token family | All refresh tokens descended from one authorization by rotation. |
 | Session | A browser sign-in session at the identity provider (single sign-on). Not the same as an agent session. |
 | Agent session | A bounded unit of agent work (for example one coding task) that tokens can be scoped to. |
+| Install | A machine user that is the identity of one listing installed in a Loams home ([13](13-machine-identity.md) section 1.2). |
+| Device | A machine user that is the identity of one laptop, instrument or sensor running `loams-node` ([13](13-machine-identity.md) section 1.2). Not the same as the device authorization grant. |
+| Home | A customer's own Loams deployment. Each home runs its own instance of this service ([15](15-loams-integration.md) LOAMS-28). |
+| Loams Access | This service, OpenFGA and the Loams Meter as one product in a home ([15](15-loams-integration.md) section 8). |
 | Projection | A read model rebuilt from the event log. |
 | OP | OpenID Provider, the role this service plays. |
 | RP | Relying Party, a client that consumes ID tokens. |
@@ -106,6 +110,8 @@ The threat model is [../docs/threat-model.md](../docs/threat-model.md), the deci
 - [RFC 8174]: Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words.
 - [RFC 2606]: Reserved Top Level DNS Names.
 - The owner's mission prompt (2026-10-21), for the phase list and the method.
+- Loams design 86 sections 4.2, 4.3 and 7, for the glossary entries Install, Device, Home and
+  Loams Access (ADR 0028).
 
 [RFC 2119]: https://www.rfc-editor.org/rfc/rfc2119
 [RFC 8174]: https://www.rfc-editor.org/rfc/rfc8174

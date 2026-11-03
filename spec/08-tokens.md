@@ -46,7 +46,7 @@ all applicable limits, and `expires_in` in the response matches it.
 | `sid` | Browser session id | Session-bound families only |
 | `act` | Actor chain ([RFC 8693] section 4.1) | Token exchange with an actor `[P3]` |
 | `org` | The subject's org id | Yes |
-| `principal` | `user`, `service_account` or `agent` | Yes |
+| `principal` | `user`, `service_account`, `agent`, `install` or `device` (ADR 0028) | Yes |
 | `agent_owner` | The agent's owner user id | Agents `[P3]` |
 | `agent_session` | The agent session id | Agent-session-scoped tokens `[P3]` |
 
@@ -253,6 +253,8 @@ reason for short access-token lifetimes and for Loams' revocation feed ([15](15-
   and reports revocation and logout state rather than just the signature; revoking a refresh
   token also invalidates its access tokens ([Zitadel endpoints]). The family model, the
   entitlement rule, the reuse rule and every default here are ours.
+- Loams design 86 section 4.3, as a Loams-side contract for the `install` and `device` values
+  of `principal` (ADR 0028).
 
 [RFC 6749]: https://www.rfc-editor.org/rfc/rfc6749
 [RFC 6750]: https://www.rfc-editor.org/rfc/rfc6750
